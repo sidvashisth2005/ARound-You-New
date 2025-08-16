@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ChatScreen extends StatefulWidget {
-  final String userId;
-  const ChatScreen({super.key, required this.userId});
+  const ChatScreen({super.key});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -23,7 +22,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat with User ${widget.userId.substring(0, 6)}...'),
+        title: const Text('Chat'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Column(
         children: [
@@ -66,7 +67,7 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(top: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)))
+        border: Border(top: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)))
       ),
       child: Row(
         children: [
@@ -85,7 +86,15 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Icon(Icons.send, color: theme.colorScheme.secondary),
             onPressed: () {
               // TODO: Send message via Firestore
-              _messageController.clear();
+              if (_messageController.text.isNotEmpty) {
+                setState(() {
+                  _messages.add({
+                    "sender": "me",
+                    "text": _messageController.text,
+                  });
+                });
+                _messageController.clear();
+              }
             },
           ),
         ],

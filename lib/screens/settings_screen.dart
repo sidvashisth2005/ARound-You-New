@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
             color: theme.colorScheme.error,
             onTap: () {
               // TODO: Implement logout logic
-              context.go('/login');
+              Navigator.of(context).pushReplacementNamed('/login');
             },
           ),
         ],

@@ -16,7 +16,6 @@ class AchievementsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Achievements'),
@@ -61,6 +60,9 @@ class AchievementCard extends StatelessWidget {
     return GlassmorphicContainer(
       width: 150,
       height: 150,
+      borderRadius: 16,
+      blur: 10,
+      border: 1.5,
       child: Opacity(
         opacity: isUnlocked ? 1.0 : 0.4,
         child: Column(
@@ -75,7 +77,7 @@ class AchievementCard extends StatelessWidget {
             Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
-                color: isUnlocked ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.7),
+                color: isUnlocked ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 fontWeight: FontWeight.bold,
               ),
             ),

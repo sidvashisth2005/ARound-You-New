@@ -28,7 +28,7 @@ class NotificationsScreen extends StatelessWidget {
       ),
       body: ListView.separated(
         itemCount: _notifications.length,
-        separatorBuilder: (context, index) => Divider(color: theme.primaryColor.withOpacity(0.2)),
+        separatorBuilder: (context, index) => Divider(color: theme.primaryColor.withValues(alpha: 0.2)),
         itemBuilder: (context, index) {
           final notification = _notifications[index];
           return ListTile(
@@ -37,7 +37,7 @@ class NotificationsScreen extends StatelessWidget {
               child: Icon(_getIconForType(notification['type']), color: theme.colorScheme.secondary),
             ),
             title: Text(notification['title']),
-            subtitle: Text(notification['time'], style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6))),
+            subtitle: Text(notification['time'], style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
             onTap: () {
               // TODO: Handle notification tap (e.g., navigate to profile or memory)
             },

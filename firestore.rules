@@ -1,0 +1,159 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is accessing their own data
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is accessing their own data or is a friend
+    function isOwnerOrFriend(userId) {
+      return isAuthenticated() && (
+        request.auth.uid == userId || 
+        exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid))
+      );
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow read access to all authenticated users (for nearby users feature)
+      allow read: if isAuthenticated();
+      
+      // Allow users to create their own profile
+      allow create: if isOwner(userId);
+      
+      // Allow users to update their own profile
+      allow update: if isOwner(userId);
+      
+      // Allow users to delete their own profile
+      allow delete: if isOwner(userId);
+      
+      // Subcollections within users
+      match /{subcollection}/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Memories collection
+    match /memories/{memoryId} {
+      // Allow read access to all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow authenticated users to create memories
+      allow create: if isAuthenticated() && 
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Allow users to update their own memories
+      allow update: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
+      
+      // Allow users to delete their own memories
+      allow delete: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
+    }
+
+    // Communities collection
+    match /communities/{communityId} {
+      // Allow read access to all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow authenticated users to create communities
+      allow create: if isAuthenticated();
+      
+      // Allow community creators to update their communities
+      allow update: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
+      
+      // Allow community creators to delete their communities
+      allow delete: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
+    }
+
+    // Friend requests collection
+    match /friendRequests/{requestId} {
+      // Allow users to read requests they sent or received
+      allow read: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
+      );
+      
+      // Allow authenticated users to create friend requests
+      allow create: if isAuthenticated() && 
+        request.resource.data.fromUserId == request.auth.uid;
+      
+      // Allow users to update requests they received
+      allow update: if isAuthenticated() && 
+        resource.data.toUserId == request.auth.uid;
+      
+      // Allow users to delete requests they sent
+      allow delete: if isAuthenticated() && 
+        resource.data.fromUserId == request.auth.uid;
+    }
+
+    // Chats collection
+    match /chats/{chatId} {
+      // Allow users to read chats they're part of
+      allow read: if isAuthenticated() && 
+        (resource.data.participants[request.auth.uid] == true);
+      
+      // Allow authenticated users to create chats
+      allow create: if isAuthenticated() && 
+        request.resource.data.participants[request.auth.uid] == true;
+      
+      // Allow chat participants to update chat metadata
+      allow update: if isAuthenticated() && 
+        resource.data.participants[request.auth.uid] == true;
+      
+      // Allow chat participants to delete chats
+      allow delete: if isAuthenticated() && 
+        resource.data.participants[request.auth.uid] == true;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Allow chat participants to read messages
+        allow read: if isAuthenticated() && 
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants[request.auth.uid] == true;
+        
+        // Allow chat participants to create messages
+        allow create: if isAuthenticated() && 
+          request.resource.data.senderId == request.auth.uid &&
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants[request.auth.uid] == true;
+        
+        // Allow message senders to update their messages
+        allow update: if isAuthenticated() && 
+          resource.data.senderId == request.auth.uid;
+        
+        // Allow message senders to delete their messages
+        allow delete: if isAuthenticated() && 
+          resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    // Achievements collection
+    match /achievements/{achievementId} {
+      // Allow read access to all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow system to create achievements (you can restrict this further if needed)
+      allow create: if isAuthenticated();
+      
+      // Allow users to update their own achievements
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Allow users to delete their own achievements
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Default rule - deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

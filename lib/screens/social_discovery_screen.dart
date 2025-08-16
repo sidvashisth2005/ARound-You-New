@@ -53,7 +53,7 @@ class SocialDiscoveryScreen extends StatelessWidget {
                           child: const Icon(Icons.person, color: Colors.black),
                         ),
                         title: Text(user['name']!, style: theme.textTheme.titleLarge),
-                        subtitle: Text(user['distance']!, style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                        subtitle: Text(user['distance']!, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
                         trailing: IconButton(
                           icon: Icon(Icons.person_add_alt_1_outlined, color: theme.colorScheme.secondary),
                           onPressed: () {
