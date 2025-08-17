@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 import '../main.dart';
+import '../widgets/glassmorphic_container.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
