@@ -30,11 +30,11 @@ class GlassmorphicContainer extends StatelessWidget {
           width: width,
           height: height,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: 0.15),
+            color: theme.colorScheme.surface.withOpacity(0.15),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
               width: border,
-              color: theme.colorScheme.primary.withValues(alpha: 0.2),
+              color: theme.colorScheme.primary.withOpacity(0.2),
             ),
           ),
           child: child,
