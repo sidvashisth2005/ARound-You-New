@@ -121,6 +121,10 @@ class _AroundScreenState extends State<AroundScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadNearbyUsers();
+    _initializeAnimations();
+  }
+
+  void _initializeAnimations() {
     _radarController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -201,14 +205,22 @@ class _AroundScreenState extends State<AroundScreen>
     });
 
     try {
-      final users = await _locationService.getNearbyUsers();
-      setState(() {
-        _nearbyUsers = users.isNotEmpty ? users : _fallbackUsers;
-        _isLoadingUsers = false;
-      });
-    } catch (e) {
+      // Simulate API call delay
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // For now, use mock data
+      // In a real app, you'd fetch from your backend
       setState(() {
         _nearbyUsers = _fallbackUsers;
+      });
+    } catch (e) {
+      debugPrint('Error loading nearby users: $e');
+      // Fallback to mock data
+      setState(() {
+        _nearbyUsers = _fallbackUsers;
+      });
+    } finally {
+      setState(() {
         _isLoadingUsers = false;
       });
     }
@@ -217,13 +229,16 @@ class _AroundScreenState extends State<AroundScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenSize = MediaQuery.of(context).size;
     
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.primaryDark,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.pureWhite),
           onPressed: () => context.go('/home'),
         ),
         title: FadeTransition(
@@ -231,102 +246,172 @@ class _AroundScreenState extends State<AroundScreen>
           child: const Text(
             'Around You',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.pureWhite,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         actions: [
           FadeTransition(
             opacity: _fadeAnimation,
             child: IconButton(
-              icon: const Icon(Icons.search, color: Colors.white),
-              onPressed: () {},
-            ),
-          ),
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: IconButton(
-              icon: const Icon(Icons.filter_list, color: Colors.white),
-              onPressed: () {},
+              icon: const Icon(Icons.refresh, color: AppTheme.pureWhite),
+              onPressed: _loadNearbyUsers,
             ),
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Tab Bar
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.1),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicator: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    color: theme.colorScheme.primary.withOpacity(0.3),
-                    border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.5),
-                      width: 1,
-                    ),
-                  ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white.withOpacity(0.5),
-                  tabs: const [
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.map, size: 20),
-                          SizedBox(width: 8),
-                          Text('Map View'),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people, size: 20),
-                          SizedBox(width: 8),
-                          Text('Nearby'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          // Background gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: AppTheme.primaryGradient,
             ),
           ),
           
-          // Tab Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+          // Main content
+          SafeArea(
+            child: Column(
               children: [
-                // Map View Tab
-                _buildMapView(),
-                // Nearby Users Tab
-                _buildNearbyUsers(),
+                // Radar Header
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
+                        boxShadow: AppTheme.premiumShadows,
+                      ),
+                      child: Column(
+                        children: [
+                          // Radar Animation
+                          AnimatedBuilder(
+                            animation: _radarAnimation,
+                            builder: (context, child) {
+                              return Transform.rotate(
+                                angle: _radarAnimation.value * 2 * 3.14159,
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppTheme.accentGold.withValues(alpha: 0.6),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: AnimatedBuilder(
+                                      animation: _pulseAnimation,
+                                      builder: (context, child) {
+                                        return Transform.scale(
+                                          scale: _pulseAnimation.value,
+                                          child: Container(
+                                            width: 40,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: AppTheme.accentGold.withValues(alpha: 0.3),
+                                            ),
+                                            child: Icon(
+                                              Icons.radar,
+                                              color: AppTheme.accentGold,
+                                              size: 24,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Discovering Nearby Users',
+                            style: TextStyle(
+                              color: AppTheme.pureWhite,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Find people with similar interests around you',
+                            style: TextStyle(
+                              color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Tab Bar
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.lightBlue.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        color: AppTheme.accentGold.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      labelColor: AppTheme.accentGold,
+                      unselectedLabelColor: AppTheme.pureWhite.withValues(alpha: 0.7),
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Nearby Users'),
+                        Tab(text: 'Recent Chats'),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Tab Content
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // Nearby Users Tab
+                        _buildNearbyUsersTab(),
+                        
+                        // Recent Chats Tab
+                        _buildRecentChatsTab(),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -335,272 +420,317 @@ class _AroundScreenState extends State<AroundScreen>
     );
   }
 
-  Widget _buildMapView() {
-    final theme = Theme.of(context);
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+  Widget _buildNearbyUsersTab() {
+    if (_isLoadingUsers) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+        ),
+      );
+    }
+
+    if (_nearbyUsers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.people_outline,
+              size: 64,
+              color: AppTheme.pureWhite.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No users nearby',
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try moving to a different location',
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              // Google Maps Placeholder
-              Container(
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.blue.withOpacity(0.3),
-                      Colors.green.withOpacity(0.3),
-                      Colors.orange.withOpacity(0.3),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.map,
-                        size: 80,
-                        color: Colors.white.withOpacity(0.7),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Interactive Map',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'See people and memories around you',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Radar Animation
-              Positioned(
-                top: 20,
-                right: 20,
-                child: ScaleTransition(
-                  scale: _pulseAnimation,
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withOpacity(0.5),
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.radar,
-                        color: theme.colorScheme.primary,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // User Count
-              Positioned(
-                bottom: 20,
-                left: 20,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _nearbyUsers.length,
+      itemBuilder: (context, index) {
+        final user = _nearbyUsers[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildUserCard(user),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> user) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: AppTheme.subtleShadows,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppTheme.accentGold.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: theme.colorScheme.secondary.withOpacity(0.5),
-                      width: 1,
+                      color: AppTheme.accentGold.withValues(alpha: 0.3),
+                      width: 1.5,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Center(
+                    child: Text(
+                      user['avatar'] as String,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // User Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.people,
-                        color: theme.colorScheme.secondary,
-                        size: 16,
+                      Row(
+                        children: [
+                          Text(
+                            user['name'] as String,
+                            style: TextStyle(
+                              color: AppTheme.pureWhite,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: user['isOnline'] as bool
+                                  ? AppTheme.accentGold
+                                  : AppTheme.subtleGray,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 4),
                       Text(
-                        '${_nearbyUsers.length} people nearby',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        '${user['distance'].toStringAsFixed(1)} km away',
+                        style: TextStyle(
+                          color: AppTheme.pureWhite.withValues(alpha: 0.7),
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Last seen: ${user['lastSeen']}',
+                        style: TextStyle(
+                          color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Interests
+            if (user['interests'] != null) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (user['interests'] as List<String>).map((interest) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.secondaryBlue.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.secondaryBlue.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      interest,
+                      style: TextStyle(
+                        color: AppTheme.secondaryBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
+              const SizedBox(height: 16),
             ],
-          ),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _startChat(user['id'] as String),
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Start Chat'),
+                    style: AppTheme.outlineButtonStyle.copyWith(
+                      foregroundColor: MaterialStateProperty.all(AppTheme.pureWhite),
+                      side: MaterialStateProperty.all(
+                        BorderSide(color: AppTheme.pureWhite.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _viewProfile(user['id'] as String),
+                    icon: const Icon(Icons.person_outline),
+                    label: const Text('View Profile'),
+                    style: AppTheme.secondaryButtonStyle,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNearbyUsers() {
-    final theme = Theme.of(context);
-    return FadeTransition(
-      opacity: _fadeAnimation,
-                      child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _nearbyUsers.length,
-                  itemBuilder: (context, index) {
-                    final user = _nearbyUsers[index];
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(0, 0.3 + (index * 0.1)),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(
-                        parent: _slideController,
-                        curve: Curves.easeOutCubic,
-                      )),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: AppTheme.elegantCardDecoration,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(30),
-                              boxShadow: AppTheme.cardShadows,
-                            ),
-                            child: Center(
-                              child: Text(
-                                user['avatar'],
-                                style: const TextStyle(fontSize: 24),
-                              ),
-                            ),
-                          ),
-                          title: Row(
-                            children: [
-                              Text(
-                                user['name'],
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: user['isOnline'] 
-                                    ? Colors.green 
-                                    : Colors.grey,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(
-                                '${user['distance']} km away • ${user['lastSeen']}',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                children: (user['interests'] as List<String>)
-                                    .take(3)
-                                    .map((interest) => Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary.withOpacity(0.25),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(
-                                              color: theme.colorScheme.primary.withOpacity(0.4),
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            interest,
-                                            style: TextStyle(
-                                              color: theme.colorScheme.primary,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ))
-                                    .toList(),
-                              ),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                onPressed: () => _viewProfile(user['id']),
-                                icon: Icon(
-                                  Icons.person_outline,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                                  size: 24,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => _startChat(user['id']),
-                                icon: Icon(
-                                  Icons.chat_bubble_outline,
-                                  color: theme.colorScheme.primary,
-                                  size: 24,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+  Widget _buildRecentChatsTab() {
+    if (_chatMessages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 64,
+              color: AppTheme.pureWhite.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No recent chats',
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start a conversation with nearby users',
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _chatMessages.length,
+      itemBuilder: (context, index) {
+        final message = _chatMessages[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildChatMessageCard(message),
+        );
+      },
+    );
+  }
+
+  Widget _buildChatMessageCard(Map<String, dynamic> message) {
+    final isFromMe = message['isFromMe'] as bool;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: isFromMe
+            ? AppTheme.accentGold.withValues(alpha: 0.2)
+            : AppTheme.pureWhite.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isFromMe
+              ? AppTheme.accentGold.withValues(alpha: 0.3)
+              : AppTheme.lightBlue.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: AppTheme.subtleShadows,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  message['userName'] as String,
+                  style: TextStyle(
+                    color: isFromMe ? AppTheme.accentGold : AppTheme.pureWhite,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+                const Spacer(),
+                Text(
+                  message['timestamp'] as String,
+                  style: TextStyle(
+                    color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message['message'] as String,
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.9),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

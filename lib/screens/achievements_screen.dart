@@ -27,27 +27,27 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     {
       'name': 'All',
       'icon': Icons.emoji_events_rounded,
-      'color': Colors.amber,
+      'color': AppTheme.accentGold,
     },
     {
       'name': 'Exploration',
       'icon': Icons.explore_rounded,
-      'color': Colors.blue,
+      'color': AppTheme.premiumBlue,
     },
     {
       'name': 'Social',
       'icon': Icons.people_rounded,
-      'color': Colors.green,
+      'color': AppTheme.secondaryBlue,
     },
     {
       'name': 'Creativity',
       'icon': Icons.brush_rounded,
-      'color': Colors.purple,
+      'color': AppTheme.accentGold,
     },
     {
       'name': 'Mastery',
       'icon': Icons.star_rounded,
-      'color': Colors.orange,
+      'color': AppTheme.premiumBlue,
     },
   ];
 
@@ -150,6 +150,10 @@ class _AchievementsScreenState extends State<AchievementsScreen>
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
+  }
+
+  void _initializeAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -201,22 +205,28 @@ class _AchievementsScreenState extends State<AchievementsScreen>
   }
 
   List<Map<String, dynamic>> get _filteredAchievements {
-    if (_selectedCategoryIndex == 0) return _achievements;
-    final category = _categories[_selectedCategoryIndex]['name'];
-    return _achievements.where((ach) => ach['category'] == category).toList();
+    if (_selectedCategoryIndex == 0) {
+      return _achievements;
+    }
+    final selectedCategory = _categories[_selectedCategoryIndex]['name'] as String;
+    return _achievements.where((achievement) => 
+      achievement['category'] == selectedCategory
+    ).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
+    final screenSize = MediaQuery.of(context).size;
     
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.primaryDark,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.pureWhite),
           onPressed: () => context.go('/home'),
         ),
         title: FadeTransition(
@@ -224,596 +234,565 @@ class _AchievementsScreenState extends State<AchievementsScreen>
           child: const Text(
             'Achievements',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.pureWhite,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         actions: [
           FadeTransition(
             opacity: _fadeAnimation,
             child: IconButton(
-              icon: const Icon(Icons.info_outline, color: Colors.white),
-              onPressed: () => _showAchievementInfo(context),
+              icon: const Icon(Icons.info_outline, color: AppTheme.pureWhite),
+              onPressed: _showAchievementsInfo,
             ),
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Stats Overview
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                      context,
-                      'Unlocked',
-                      _achievements.where((a) => a['unlocked']).length.toString(),
-                      _achievements.length.toString(),
-                      Icons.lock_open_rounded,
-                      Colors.green,
-                    ),
-                    _buildStatItem(
-                      context,
-                      'Total XP',
-                      _achievements
-                          .where((a) => a['unlocked'])
-                          .fold(0, (sum, a) => sum + (a['xpReward'] as int))
-                          .toString(),
-                      '',
-                      Icons.star_rounded,
-                      Colors.amber,
-                    ),
-                    _buildStatItem(
-                      context,
-                      'Progress',
-                      '${((_achievements.where((a) => a['unlocked']).length / _achievements.length) * 100).toInt()}%',
-                      '',
-                      Icons.trending_up_rounded,
-                      theme.colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
+          // Background gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: AppTheme.primaryGradient,
             ),
           ),
           
-          // Category Filter
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Container(
-                height: 60,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    final isSelected = _selectedCategoryIndex == index;
-                    
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedCategoryIndex = index),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.only(right: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected 
-                            ? category['color'].withOpacity(0.2)
-                            : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected 
-                              ? category['color'].withOpacity(0.5)
-                              : Colors.white.withOpacity(0.1),
-                            width: 1,
-                          ),
+          // Main content
+          SafeArea(
+            child: Column(
+              children: [
+                // Stats Header
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+                          width: 1.5,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              category['icon'],
-                              color: isSelected ? category['color'] : Colors.white.withOpacity(0.7),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              category['name'],
-                              style: TextStyle(
-                                color: isSelected ? category['color'] : Colors.white.withOpacity(0.7),
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                        boxShadow: AppTheme.premiumShadows,
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          
-          // Achievements Grid
-          Expanded(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: size.width > 600 ? 3 : 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                ),
-                itemCount: _filteredAchievements.length,
-                itemBuilder: (context, index) {
-                  final achievement = _filteredAchievements[index];
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: Offset(0, 0.3 + (index * 0.1)),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: _slideController,
-                      curve: Curves.easeOutCubic,
-                    )),
-                    child: _buildAchievementCard(context, achievement),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    String total,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        if (total.isNotEmpty) ...[
-          Text(
-            '/ $total',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 14,
-            ),
-          ),
-        ],
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAchievementCard(BuildContext context, Map<String, dynamic> achievement) {
-    final theme = Theme.of(context);
-    final isUnlocked = achievement['unlocked'] as bool;
-    final progress = achievement['progress'] as double;
-    final rarity = achievement['rarity'] as String;
-    final xpReward = achievement['xpReward'] as int;
-    
-    return GestureDetector(
-      onTap: () => _showAchievementDetails(context, achievement),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.colorScheme.primary.withOpacity(0.2),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Achievement Icon with Progress Ring
-            Expanded(
-              flex: 3,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Progress Ring
-                  if (!isUnlocked) ...[
-                    SizedBox(
-                      width: 80,
-                      height: 80,
-                      child: CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 4,
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                  
-                  // Icon Container
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      gradient: isUnlocked 
-                        ? LinearGradient(
-                            colors: [
-                              theme.colorScheme.primary,
-                              theme.colorScheme.secondary,
-                            ],
-                          )
-                        : null,
-                      color: isUnlocked ? null : Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: isUnlocked 
-                          ? theme.colorScheme.primary.withOpacity(0.5)
-                          : Colors.white.withOpacity(0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: Icon(
-                      achievement['icon'],
-                      color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.5),
-                      size: 30,
-                    ),
-                  ),
-                  
-                  // Unlock Badge
-                  if (isUnlocked)
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: ScaleTransition(
-                        scale: _pulseAnimation,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            
-            // Achievement Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      achievement['title'],
-                      style: TextStyle(
-                        color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      achievement['description'],
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // XP Reward
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.amber.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              Icon(
-                                Icons.star,
-                                color: Colors.amber,
-                                size: 12,
+                              AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: _pulseAnimation.value,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.accentGold.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Icon(
+                                        Icons.emoji_events_rounded,
+                                        color: AppTheme.accentGold,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$xpReward',
-                                style: TextStyle(
-                                  color: Colors.amber,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Your Progress',
+                                      style: TextStyle(
+                                        color: AppTheme.pureWhite,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Keep exploring to unlock more achievements!',
+                                      style: TextStyle(
+                                        color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Unlocked',
+                                  _achievements.where((a) => a['unlocked'] as bool).length.toString(),
+                                  _achievements.length.toString(),
+                                  Icons.lock_open,
+                                  AppTheme.accentGold,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Total XP',
+                                  _achievements
+                                      .where((a) => a['unlocked'] as bool)
+                                      .fold(0, (sum, a) => sum + (a['xpReward'] as int))
+                                      .toString(),
+                                  '',
+                                  Icons.star,
+                                  AppTheme.premiumBlue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Category Filter
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Container(
+                    height: 60,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _categories.length,
+                      itemBuilder: (context, index) {
+                        final category = _categories[index];
+                        final isSelected = _selectedCategoryIndex == index;
                         
-                        // Rarity Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _getRarityColor(rarity).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _getRarityColor(rarity).withOpacity(0.3),
-                              width: 1,
+                        return Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          child: _buildCategoryChip(category, isSelected, index),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Achievements List
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: _filteredAchievements.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _filteredAchievements.length,
+                            itemBuilder: (context, index) {
+                              final achievement = _filteredAchievements[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _buildAchievementCard(achievement),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, String total, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (total.isNotEmpty) ...[
+            Text(
+              '/ $total',
+              style: TextStyle(
+                color: color.withValues(alpha: 0.7),
+                fontSize: 12,
+              ),
+            ),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withValues(alpha: 0.8),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(Map<String, dynamic> category, bool isSelected, int index) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() => _selectedCategoryIndex = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? category['color'].withValues(alpha: 0.2)
+                : AppTheme.pureWhite.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected 
+                  ? category['color']
+                  : AppTheme.lightBlue.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                category['icon'] as IconData,
+                color: isSelected 
+                    ? category['color']
+                    : AppTheme.pureWhite.withValues(alpha: 0.7),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                category['name'] as String,
+                style: TextStyle(
+                  color: isSelected 
+                      ? category['color']
+                      : AppTheme.pureWhite.withValues(alpha: 0.7),
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAchievementCard(Map<String, dynamic> achievement) {
+    final isUnlocked = achievement['unlocked'] as bool;
+    final rarity = achievement['rarity'] as String;
+    final progress = achievement['progress'] as double;
+    
+    Color rarityColor;
+    switch (rarity) {
+      case 'Common':
+        rarityColor = AppTheme.pureWhite.withValues(alpha: 0.7);
+        break;
+      case 'Uncommon':
+        rarityColor = AppTheme.secondaryBlue;
+        break;
+      case 'Rare':
+        rarityColor = AppTheme.accentGold;
+        break;
+      case 'Epic':
+        rarityColor = AppTheme.premiumBlue;
+        break;
+      case 'Legendary':
+        rarityColor = AppTheme.accentGold;
+        break;
+      default:
+        rarityColor = AppTheme.pureWhite.withValues(alpha: 0.7);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isUnlocked 
+              ? rarityColor.withValues(alpha: 0.5)
+              : AppTheme.lightBlue.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: AppTheme.subtleShadows,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Achievement Icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isUnlocked 
+                        ? rarityColor.withValues(alpha: 0.2)
+                        : AppTheme.subtleGray.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isUnlocked 
+                          ? rarityColor
+                          : AppTheme.subtleGray,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    achievement['icon'] as IconData,
+                    color: isUnlocked 
+                        ? rarityColor
+                        : AppTheme.subtleGray,
+                    size: 28,
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Achievement Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              achievement['title'] as String,
+                              style: TextStyle(
+                                color: AppTheme.pureWhite,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          child: Text(
-                            rarity,
+                          if (isUnlocked)
+                            Icon(
+                              Icons.check_circle,
+                              color: AppTheme.accentGold,
+                              size: 24,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        achievement['description'] as String,
+                        style: TextStyle(
+                          color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: rarityColor.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: rarityColor.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              rarity,
+                              style: TextStyle(
+                                color: rarityColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${achievement['xpReward']} XP',
                             style: TextStyle(
-                              color: _getRarityColor(rarity),
-                              fontSize: 9,
+                              color: AppTheme.accentGold,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Progress Bar
+            if (!isUnlocked) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Progress',
+                        style: TextStyle(
+                          color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                          fontSize: 12,
                         ),
-                      ],
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: TextStyle(
+                          color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                  ],
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: progress,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: rarityColor,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (achievement['unlockDate'] != null) ...[
+              Text(
+                'Unlocked on ${achievement['unlockDate']}',
+                style: TextStyle(
+                  color: AppTheme.accentGold.withValues(alpha: 0.8),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Color _getRarityColor(String rarity) {
-    switch (rarity.toLowerCase()) {
-      case 'common':
-        return Colors.grey;
-      case 'uncommon':
-        return Colors.green;
-      case 'rare':
-        return Colors.blue;
-      case 'epic':
-        return Colors.purple;
-      case 'legendary':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  void _showAchievementDetails(BuildContext context, Map<String, dynamic> achievement) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildAchievementModal(context, achievement),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.emoji_events_outlined,
+            size: 64,
+            color: AppTheme.pureWhite.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No achievements in this category',
+            style: TextStyle(
+              color: AppTheme.pureWhite.withValues(alpha: 0.7),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try selecting a different category',
+            style: TextStyle(
+              color: AppTheme.pureWhite.withValues(alpha: 0.5),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildAchievementModal(BuildContext context, Map<String, dynamic> achievement) {
-    final theme = Theme.of(context);
-    final isUnlocked = achievement['unlocked'] as bool;
-    
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: const BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
+  void _showAchievementsInfo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.95),
+        title: const Text(
+          'About Achievements',
+          style: TextStyle(
+            color: AppTheme.pureWhite,
+            fontWeight: FontWeight.bold,
           ),
-          
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Achievement Icon
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: isUnlocked 
-                        ? LinearGradient(
-                            colors: [
-                              theme.colorScheme.primary,
-                              theme.colorScheme.secondary,
-                            ],
-                          )
-                        : null,
-                      color: isUnlocked ? null : Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(50),
-                      border: Border.all(
-                        color: isUnlocked 
-                          ? theme.colorScheme.primary.withOpacity(0.5)
-                          : Colors.white.withOpacity(0.2),
-                        width: 3,
-                      ),
-                    ),
-                    child: Icon(
-                      achievement['icon'],
-                      color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.5),
-                      size: 50,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Title
-                  Text(
-                    achievement['title'],
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Description
-                  Text(
-                    achievement['description'],
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Stats Grid
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildModalStat(
-                          'XP Reward',
-                          '${achievement['xpReward']}',
-                          Icons.star,
-                          Colors.amber,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildModalStat(
-                          'Rarity',
-                          achievement['rarity'],
-                          Icons.diamond,
-                          _getRarityColor(achievement['rarity']),
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildModalStat(
-                          'Progress',
-                          isUnlocked ? '100%' : '${(achievement['progress'] * 100).toInt()}%',
-                          Icons.trending_up,
-                          theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  if (isUnlocked && achievement['unlockDate'] != null) ...[
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.green.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.celebration,
-                            color: Colors.green,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Unlocked on ${achievement['unlockDate']}',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Common', 'Easiest to unlock', AppTheme.pureWhite.withValues(alpha: 0.7)),
+            _buildInfoRow('Uncommon', 'Moderate difficulty', AppTheme.secondaryBlue),
+            _buildInfoRow('Rare', 'Challenging to achieve', AppTheme.accentGold),
+            _buildInfoRow('Epic', 'Very difficult', AppTheme.premiumBlue),
+            _buildInfoRow('Legendary', 'Extremely rare', AppTheme.accentGold),
+            const SizedBox(height: 16),
+            Text(
+              'Earn XP and unlock achievements by exploring, creating memories, and connecting with others!',
+              style: TextStyle(
+                color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Got it!',
+              style: TextStyle(
+                color: AppTheme.accentGold,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -822,53 +801,33 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     );
   }
 
-  Widget _buildModalStat(String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  Widget _buildInfoRow(String rarity, String description, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 12,
+          const SizedBox(width: 8),
+          Text(
+            rarity,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  void _showAchievementInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.black,
-        title: const Text(
-          'Achievements Guide',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Achievements are earned by completing various activities in the app. '
-          'Each achievement gives you XP points and helps you level up. '
-          'Track your progress and unlock new achievements!',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Got it!'),
+          const SizedBox(width: 8),
+          Text(
+            '- $description',
+            style: TextStyle(
+              color: AppTheme.pureWhite.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),

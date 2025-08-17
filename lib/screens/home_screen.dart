@@ -155,21 +155,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildCreateModal() {
     final theme = Theme.of(context);
+    final screenSize = MediaQuery.of(context).size;
     
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
-      maxChildSize: 0.8,
+      maxChildSize: 0.9,
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.95),
+            color: AppTheme.primaryDark.withValues(alpha: 0.95),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(30),
               topRight: Radius.circular(30),
             ),
             border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: AppTheme.accentGold.withValues(alpha: 0.3),
               width: 1.5,
             ),
           ),
@@ -181,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: 40,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
+                  color: AppTheme.pureWhite.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -191,16 +192,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.add_circle_outline,
-                      color: theme.colorScheme.primary,
-                      size: 48,
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentGold.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(
+                              Icons.add_circle_outline,
+                              color: AppTheme.accentGold,
+                              size: 48,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'Create New Memory',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.pureWhite,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -209,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text(
                       'Choose the type of content you want to create',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: AppTheme.pureWhite.withValues(alpha: 0.7),
                         fontSize: 16,
                       ),
                       textAlign: TextAlign.center,
@@ -229,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       'Text',
                       'Share your thoughts and memories',
                       Icons.text_fields,
-                      Colors.blue,
+                      AppTheme.primaryDark,
                       () => _handleContentTypeSelection('text'),
                     ),
                     const SizedBox(height: 16),
@@ -238,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       'Photo',
                       'Capture and share moments',
                       Icons.camera_alt,
-                      Colors.green,
+                      AppTheme.secondaryBlue,
                       () => _handleContentTypeSelection('photo'),
                     ),
                     const SizedBox(height: 16),
@@ -247,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       'Video',
                       'Record and share experiences',
                       Icons.videocam,
-                      Colors.red,
+                      AppTheme.accentGold,
                       () => _handleContentTypeSelection('video'),
                     ),
                     const SizedBox(height: 16),
@@ -256,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       'Audio',
                       'Share voice messages and sounds',
                       Icons.mic,
-                      Colors.orange,
+                      AppTheme.premiumBlue,
                       () => _handleContentTypeSelection('audio'),
                     ),
                     const SizedBox(height: 32),
@@ -286,12 +302,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: AppTheme.pureWhite.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: color.withOpacity(0.3),
-              width: 1,
+              color: color.withValues(alpha: 0.3),
+              width: 1.5,
             ),
+            boxShadow: AppTheme.subtleShadows,
           ),
           child: Row(
             children: [
@@ -299,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -315,8 +332,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.pureWhite,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -325,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Text(
                       description,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: AppTheme.pureWhite.withValues(alpha: 0.7),
                         fontSize: 14,
                       ),
                     ),
@@ -334,7 +351,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                color: Colors.white.withOpacity(0.5),
+                color: AppTheme.pureWhite.withValues(alpha: 0.5),
                 size: 16,
               ),
             ],
@@ -381,12 +398,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isActive 
-            ? theme.colorScheme.primary.withOpacity(0.15)
+            ? AppTheme.primaryDark.withValues(alpha: 0.15)
             : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isActive 
-              ? theme.colorScheme.primary.withOpacity(0.3)
+              ? AppTheme.primaryDark.withValues(alpha: 0.3)
               : Colors.transparent,
             width: 1,
           ),
@@ -401,23 +418,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Icon(
                 icon,
                 color: isActive 
-                  ? theme.colorScheme.primary 
-                  : Colors.white.withOpacity(0.7),
-                size: 20,
+                  ? AppTheme.primaryDark
+                  : AppTheme.pureWhite.withValues(alpha: 0.7),
+                size: 24,
               ),
             ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
+            const SizedBox(height: 4),
+            Text(
+              label,
               style: TextStyle(
                 color: isActive 
-                  ? theme.colorScheme.primary 
-                  : Colors.white.withOpacity(0.7),
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                letterSpacing: 0.2,
+                  ? AppTheme.primaryDark
+                  : AppTheme.pureWhite.withValues(alpha: 0.7),
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
-              child: Text(label),
             ),
           ],
         ),
@@ -428,311 +443,368 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _cameraController.dispose();
-    _fadeController.dispose();
     _pulseController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.elegantGradient),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: theme.colorScheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'Initializing AR Camera...',
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    final screenSize = MediaQuery.of(context).size;
     
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.primaryDark,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {},
+        title: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Text(
+            'Around You',
+            style: TextStyle(
+              color: AppTheme.pureWhite,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () => context.push('/notifications'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-            onPressed: () => context.push('/profile'),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: IconButton(
+              icon: Icon(
+                Icons.notifications_outlined,
+                color: AppTheme.pureWhite,
+              ),
+              onPressed: () => context.push('/notifications'),
+            ),
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.95),
-          border: Border(
-            top: BorderSide(
-              color: Colors.white.withOpacity(0.1),
-              width: 0.5,
-            ),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Stack(
               children: [
-                _buildNavItem(
-                  context,
-                  Icons.home_rounded,
-                  'Home',
-                  true,
-                  () => context.go('/home'),
+                // Background gradient
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                  ),
                 ),
-                _buildNavItem(
-                  context,
-                  Icons.explore_rounded,
-                  'Around',
-                  false,
-                  () => context.go('/around'),
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.chat_rounded,
-                  'Chat',
-                  false,
-                  () => context.go('/chat'),
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.emoji_events_rounded,
-                  'Achievements',
-                  false,
-                  () => context.go('/achievements'),
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.person_rounded,
-                  'Profile',
-                  false,
-                  () => context.go('/profile'),
+                
+                // Main content
+                SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: screenSize.height - MediaQuery.of(context).padding.top - 100,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 100),
+                          
+                          // Welcome Section
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: AppTheme.lightBlue.withValues(alpha: 0.3),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: AppTheme.premiumShadows,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        AnimatedBuilder(
+                                          animation: _pulseAnimation,
+                                          builder: (context, child) {
+                                            return Transform.scale(
+                                              scale: _pulseAnimation.value,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(12),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.accentGold.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: Icon(
+                                                  Icons.explore,
+                                                  color: AppTheme.accentGold,
+                                                  size: 32,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Welcome Back!',
+                                                style: TextStyle(
+                                                  color: AppTheme.pureWhite,
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Discover memories around you',
+                                                style: TextStyle(
+                                                  color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Quick Actions
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Quick Actions',
+                                  style: TextStyle(
+                                    color: AppTheme.pureWhite,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildActionCard(
+                                        'Create Memory',
+                                        'Share your experiences',
+                                        Icons.add_circle_outline,
+                                        AppTheme.accentGold,
+                                        _showCreateModal,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildActionCard(
+                                        'Explore AR',
+                                        'View nearby memories',
+                                        Icons.view_in_ar,
+                                        AppTheme.premiumBlue,
+                                        () => context.push('/around'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Location & Stats
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppTheme.pureWhite.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppTheme.lightBlue.withValues(alpha: 0.3),
+                                  width: 1.5,
+                                ),
+                                boxShadow: AppTheme.subtleShadows,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your Location',
+                                    style: TextStyle(
+                                      color: AppTheme.pureWhite,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        color: AppTheme.accentGold,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _currentLocation,
+                                          style: TextStyle(
+                                            color: AppTheme.pureWhite.withValues(alpha: 0.9),
+                                            fontSize: 16,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people,
+                                        color: AppTheme.secondaryBlue,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        '$_nearbyMemoriesCount memories nearby',
+                                        style: TextStyle(
+                                          color: AppTheme.pureWhite.withValues(alpha: 0.9),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
+      floatingActionButton: FadeTransition(
+        opacity: _fadeAnimation,
+        child: FloatingActionButton.extended(
+          onPressed: _showCreateModal,
+          backgroundColor: AppTheme.accentGold,
+          foregroundColor: AppTheme.primaryDark,
+          icon: const Icon(Icons.add),
+          label: const Text('Create'),
+          elevation: 8,
+        ),
+      ),
+      bottomNavigationBar: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.pureWhite.withValues(alpha: 0.95),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            boxShadow: AppTheme.premiumShadows,
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(context, Icons.home, 'Home', true, () {}),
+                  _buildNavItem(context, Icons.explore, 'Around', false, () => context.push('/around')),
+                  _buildNavItem(context, Icons.chat, 'Chat', false, () => context.push('/chat')),
+                  _buildNavItem(context, Icons.emoji_events, 'Achievements', false, () => context.push('/achievements')),
+                  _buildNavItem(context, Icons.person, 'Profile', false, () => context.push('/profile')),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-      body: Stack(
-        children: [
-          // AR Camera View
-          if (_isCameraActive && _arService.getCameraPreview() != null)
-            Positioned.fill(
-              child: _arService.getCameraPreview()!,
-            )
-          else
-            // Fallback gradient background
-            Positioned.fill(
-              child: Container(
+    );
+  }
+
+  Widget _buildActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppTheme.pureWhite.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+            boxShadow: AppTheme.subtleShadows,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.colorScheme.primary.withOpacity(0.3),
-                      Colors.black,
-                      theme.colorScheme.secondary.withOpacity(0.2),
-                    ],
-                  ),
+                  color: color.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.camera_alt,
-                        color: Colors.white.withOpacity(0.3),
-                        size: 80,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'AR Camera View',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Point your camera to see AR content',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.3),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 24,
                 ),
               ),
-            ),
-          
-          // AR Overlay Elements
-          Positioned(
-            top: 100,
-            left: 20,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: theme.colorScheme.primary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        _currentLocation,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppTheme.pureWhite,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-          
-          // Nearby Memories Indicator
-          Positioned(
-            top: 100,
-            right: 20,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: theme.colorScheme.secondary.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.place,
-                      color: theme.colorScheme.secondary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '$_nearbyMemoriesCount memories nearby',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
-          // Create Button (Floating Action Button)
-          Positioned(
-            bottom: 100,
-            right: 20,
-            child: ScaleTransition(
-              scale: _pulseAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: FloatingActionButton(
-                  onPressed: _showCreateModal,
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  child: const Icon(Icons.add, size: 32),
-                ),
-              ),
-            ),
-          ),
-          
-          // Bottom Navigation Hint
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    'Swipe up to explore more',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
