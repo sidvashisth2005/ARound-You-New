@@ -113,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.go('/home'),
         ),
         actions: [
           IconButton(

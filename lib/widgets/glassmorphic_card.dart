@@ -130,16 +130,19 @@ class _GlassmorphicCardState extends State<GlassmorphicCard>
     Widget content = GlassmorphicContainer(
       width: widget.width ?? double.infinity,
       height: widget.height ?? double.infinity,
-      padding: widget.padding,
       borderRadius: widget.borderRadius,
       blur: widget.blur,
-      // opacity parameter removed as it's not supported in GlassmorphicContainer
-      borderColor: defaultBorderColor,
-      backgroundColor: defaultBackgroundColor,
-      boxShadow: defaultBoxShadow,
-      gradient: defaultGradient,
-      hasAnimation: widget.hasAnimation,
-      child: widget.child,
+      child: Container(
+        padding: widget.padding,
+        decoration: BoxDecoration(
+          color: defaultBackgroundColor,
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          border: Border.all(color: defaultBorderColor),
+          boxShadow: defaultBoxShadow,
+          gradient: defaultGradient,
+        ),
+        child: widget.child,
+      ),
     );
     
     // No need for SizedBox wrapping since width and height are directly set on GlassmorphicContainer

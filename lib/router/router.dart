@@ -89,12 +89,16 @@ final router = GoRouter(
       builder: (context, state) => const ChatScreen(),
     ),
     GoRoute(
+      path: '/chat/:id',
+      builder: (context, state) => const ChatScreen(),
+    ),
+    GoRoute(
       path: '/help',
       builder: (context, state) => const HelpScreen(),
     ),
     GoRoute(
       path: '/community',
-      builder: (context, state) => const SocialDiscoveryScreen(),
+      builder: (context, state) => const ChatScreen(), // Redirect community to chat
     ),
     GoRoute(
       path: '/settings',

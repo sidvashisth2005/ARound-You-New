@@ -222,6 +222,10 @@ class _AroundScreenState extends State<AroundScreen>
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => context.go('/home'),
+        ),
         title: FadeTransition(
           opacity: _fadeAnimation,
           child: const Text(

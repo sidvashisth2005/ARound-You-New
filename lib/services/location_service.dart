@@ -11,6 +11,8 @@ class LocationService {
   final PermissionService _permissionService = PermissionService();
   Position? _currentPosition;
   bool _isLocationEnabled = false;
+  bool _isInitialized = false;
+  Stream<Position>? _locationStream;
 
   // Mock nearby users data - in real app this would come from Firebase
   final List<Map<String, dynamic>> _mockNearbyUsers = [
@@ -76,14 +78,20 @@ class LocationService {
     },
   ];
 
-  /// Initialize location service
+  /// Initialize location service - starts background processing immediately
   Future<bool> initialize() async {
+    if (_isInitialized) return true;
+    
     try {
+      debugPrint('📍 Initializing location service...');
+      
       // Check and request location permission
       final hasPermission = await _permissionService.isLocationPermissionGranted();
       if (!hasPermission) {
+        debugPrint('📍 Requesting location permission...');
         final granted = await _permissionService.requestLocationPermission();
         if (!granted) {
+          debugPrint('❌ Location permission denied');
           return false;
         }
       }
@@ -91,36 +99,120 @@ class LocationService {
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        await Geolocator.openLocationSettings();
+        debugPrint('❌ Location services disabled');
+        // Don't open settings automatically, just return false
         return false;
       }
 
       _isLocationEnabled = true;
+      _isInitialized = true;
+      
+      // Start background location processing
+      _startBackgroundLocationProcessing();
+      
+      debugPrint('✅ Location service initialized successfully');
       return true;
     } catch (e) {
-      debugPrint('Error initializing location service: $e');
+      debugPrint('❌ Error initializing location service: $e');
       return false;
     }
   }
 
-  /// Get current location
+  /// Start background location processing
+  void _startBackgroundLocationProcessing() async {
+    try {
+      // Get initial location
+      await _getInitialLocation();
+      
+      // Start location stream for continuous updates
+      _startLocationStream();
+    } catch (e) {
+      debugPrint('❌ Error in background location processing: $e');
+    }
+  }
+
+  /// Get initial location with better error handling
+  Future<void> _getInitialLocation() async {
+    try {
+      debugPrint('📍 Getting initial location...');
+      
+      _currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 15), // Increased timeout
+      );
+      
+      debugPrint('✅ Initial location obtained: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+    } catch (e) {
+      debugPrint('❌ Error getting initial location: $e');
+      
+      // Try with lower accuracy if high accuracy fails
+      try {
+        _currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 10),
+        );
+        debugPrint('✅ Location obtained with medium accuracy');
+      } catch (e2) {
+        debugPrint('❌ Failed to get location with medium accuracy: $e2');
+      }
+    }
+  }
+
+  /// Start location stream for continuous updates
+  void _startLocationStream() {
+    try {
+      const LocationSettings locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10, // Update every 10 meters
+      );
+
+      _locationStream = Geolocator.getPositionStream(locationSettings: locationSettings);
+      
+      // Listen to location updates
+      _locationStream?.listen(
+        (Position position) {
+          _currentPosition = position;
+          debugPrint('📍 Location updated: ${position.latitude}, ${position.longitude}');
+        },
+        onError: (error) {
+          debugPrint('❌ Location stream error: $error');
+        },
+      );
+      
+      debugPrint('✅ Location stream started');
+    } catch (e) {
+      debugPrint('❌ Error starting location stream: $e');
+    }
+  }
+
+  /// Get current location with cached result
   Future<Position?> getCurrentLocation() async {
     try {
-      if (!_isLocationEnabled) {
+      // If we have a recent cached position, return it
+      if (_currentPosition != null) {
+        final timeSinceLastUpdate = DateTime.now().difference(_currentPosition!.timestamp!);
+        if (timeSinceLastUpdate.inMinutes < 5) {
+          debugPrint('📍 Returning cached location');
+          return _currentPosition;
+        }
+      }
+
+      // If not initialized, initialize first
+      if (!_isInitialized) {
         final initialized = await initialize();
         if (!initialized) {
           return null;
         }
       }
 
-      _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
+      // If we still don't have a position, try to get one
+      if (_currentPosition == null) {
+        await _getInitialLocation();
+      }
 
       return _currentPosition;
     } catch (e) {
-      debugPrint('Error getting current location: $e');
+      debugPrint('❌ Error getting current location: $e');
       return null;
     }
   }
@@ -131,11 +223,15 @@ class LocationService {
   /// Check if location is enabled
   bool get isLocationEnabled => _isLocationEnabled;
 
+  /// Check if service is initialized
+  bool get isInitialized => _isInitialized;
+
   /// Get nearby users based on current location
   Future<List<Map<String, dynamic>>> getNearbyUsers({double radiusInKm = 5.0}) async {
     try {
       final currentLocation = await getCurrentLocation();
       if (currentLocation == null) {
+        debugPrint('❌ No current location available for nearby users');
         return [];
       }
 
@@ -162,9 +258,10 @@ class LocationService {
         user['distance'] = distance;
       }
 
+      debugPrint('📍 Found ${nearbyUsers.length} nearby users');
       return nearbyUsers;
     } catch (e) {
-      debugPrint('Error getting nearby users: $e');
+      debugPrint('❌ Error getting nearby users: $e');
       return [];
     }
   }
@@ -190,21 +287,7 @@ class LocationService {
 
   /// Start location updates
   Stream<Position>? startLocationUpdates() {
-    try {
-      if (!_isLocationEnabled) {
-        return null;
-      }
-
-      const LocationSettings locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Update every 10 meters
-      );
-
-      return Geolocator.getPositionStream(locationSettings: locationSettings);
-    } catch (e) {
-      debugPrint('Error starting location updates: $e');
-      return null;
-    }
+    return _locationStream;
   }
 
   /// Stop location updates
@@ -226,9 +309,10 @@ class LocationService {
   Future<String?> getAddressFromCoordinates(LatLng coordinates) async {
     try {
       // For now, return a simple formatted string
+      // In a real app, you'd use a geocoding service
       return '${coordinates.latitude.toStringAsFixed(4)}, ${coordinates.longitude.toStringAsFixed(4)}';
     } catch (e) {
-      debugPrint('Error getting address: $e');
+      debugPrint('❌ Error getting address: $e');
       return null;
     }
   }
@@ -268,7 +352,7 @@ class LocationService {
         _mockNearbyUsers[userIndex]['lastUpdated'] = DateTime.now();
       }
     } catch (e) {
-      debugPrint('Error updating mock user location: $e');
+      debugPrint('❌ Error updating mock user location: $e');
     }
   }
 

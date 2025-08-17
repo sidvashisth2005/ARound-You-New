@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
 
@@ -214,6 +215,10 @@ class _AchievementsScreenState extends State<AchievementsScreen>
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => context.go('/home'),
+        ),
         title: FadeTransition(
           opacity: _fadeAnimation,
           child: const Text(

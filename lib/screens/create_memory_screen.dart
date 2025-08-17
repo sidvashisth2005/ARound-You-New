@@ -262,7 +262,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: isSelected 
                           ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
@@ -274,17 +274,17 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                       color: isSelected 
                           ? Colors.white
                           : Colors.white.withOpacity(0.7),
-                      size: 24,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     type['label'] as String,
                     style: TextStyle(
                       color: isSelected 
                           ? Colors.white
                           : Colors.white.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -368,17 +368,32 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         ],
         
         // Text input
-        GlassmorphicContainer(
+        Container(
           width: double.infinity,
           height: 120,
-          borderRadius: 16,
-          blur: 10,
-          border: 1.5,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _textController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: _selectedMemoryType == 'text' 
@@ -389,6 +404,8 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                   fontSize: 16,
                 ),
                 border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
               ),
             ),
           ),
@@ -398,12 +415,24 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
   }
 
   Widget _buildLocationSection() {
-    return GlassmorphicContainer(
+    return Container(
       width: double.infinity,
       height: 80,
-      borderRadius: 16,
-      blur: 10,
-      border: 1.5,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(

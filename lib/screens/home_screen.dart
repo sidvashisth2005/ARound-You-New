@@ -523,10 +523,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 _buildNavItem(
                   context,
-                  Icons.people_rounded,
-                  'Community',
+                  Icons.chat_rounded,
+                  'Chat',
                   false,
-                  () => context.go('/community'),
+                  () => context.go('/chat'),
                 ),
                 _buildNavItem(
                   context,

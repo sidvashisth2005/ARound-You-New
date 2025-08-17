@@ -9,6 +9,7 @@ import 'package:around_you/services/permission_service.dart';
 import 'package:around_you/services/location_service.dart';
 import 'package:around_you/services/cloudinary_service.dart';
 import 'package:around_you/services/ar_service.dart';
+import 'package:go_router/go_router.dart';
 
 // Global navigator key for accessing context outside of build
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -68,11 +69,20 @@ class ARoundYouApp extends StatelessWidget {
           onWillPop: () async {
             // Handle back button press
             final navigator = Navigator.of(context);
+            final router = GoRouter.of(context);
+            
+            // Check if we can pop the current route
             if (navigator.canPop()) {
               navigator.pop();
               return false;
-            } else {
-              // If we're at the root, show exit confirmation
+            }
+            
+            // Check if we're at a main screen that should exit the app
+            final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+            final mainScreens = ['/home', '/around', '/chat', '/achievements', '/profile'];
+            
+            if (mainScreens.contains(currentLocation)) {
+              // Show exit confirmation for main screens
               final shouldExit = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
@@ -99,6 +109,10 @@ class ARoundYouApp extends StatelessWidget {
               );
               return shouldExit ?? false;
             }
+            
+            // For other screens, try to navigate back to home
+            router.go('/home');
+            return false;
           },
           child: child!,
         );
