@@ -41,7 +41,7 @@ class PageTransition extends PageRouteBuilder {
               case PageTransitionType.scale:
                 return ScaleTransition(
                   scale: animation,
-                  alignment: alignment,
+                  alignment: alignment ?? Alignment.center,
                   child: child,
                 );
               case PageTransitionType.slideRight:

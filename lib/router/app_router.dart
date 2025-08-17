@@ -54,8 +54,10 @@ class AppRouter {
         );
 
       case '/create-memory':
+        final args = settings.arguments as Map<String, dynamic>?;
+        final memoryType = args?['type'] as String?;
         return PageTransition(
-          child: const CreateMemoryScreen(),
+          child: CreateMemoryScreen(memoryType: memoryType),
           type: PageTransitionType.scale,
           alignment: Alignment.center,
         );
@@ -67,8 +69,16 @@ class AppRouter {
         );
 
       case '/ar-memory':
+        final args = settings.arguments as Map<String, dynamic>?;
+        final memoryType = args?['memoryType'] as String? ?? 'text';
+        final memoryText = args?['memoryText'] as String?;
+        final imagePath = args?['imagePath'] as String?;
         return PageTransition(
-          child: const ARMemoryScreen(),
+          child: ARMemoryScreen(
+            memoryType: memoryType,
+            memoryText: memoryText,
+            imagePath: imagePath,
+          ),
           type: PageTransitionType.scale,
           alignment: Alignment.bottomRight,
         );

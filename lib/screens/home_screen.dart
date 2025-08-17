@@ -4,6 +4,9 @@ import 'package:around_you/services/permission_service.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/services/map_preload_service.dart';
 import 'package:around_you/extensions/color_extensions.dart';
+import 'package:around_you/services/location_service.dart';
+import 'package:around_you/services/ar_service.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,8 +24,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _slideAnimation;
   
   final PermissionService _permissionService = PermissionService();
+  final LocationService _locationService = LocationService();
+  final ARService _arService = ARService();
+  
   bool _isLoading = true;
   bool _isCameraActive = false;
+  String _currentLocation = 'Loading...';
+  int _nearbyMemoriesCount = 0;
 
   @override
   void initState() {
@@ -80,6 +88,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _initializeCamera() async {
     try {
       await _permissionService.checkPermissionStatuses();
+      await _loadLocationData();
+      
+      // Initialize AR camera
+      final cameraInitialized = await _arService.initializeCamera();
+      if (cameraInitialized) {
+        setState(() {
+          _isCameraActive = true;
+        });
+      }
+      
       await Future.delayed(const Duration(milliseconds: 800));
       setState(() {
         _isLoading = false;
@@ -96,6 +114,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadLocationData() async {
+    try {
+      // Get current location
+      final position = await _locationService.getCurrentLocation();
+      if (position != null) {
+        final address = await _locationService.getAddressFromCoordinates(
+          LatLng(position.latitude, position.longitude),
+        );
+        setState(() {
+          _currentLocation = address ?? '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+        });
+      }
+
+      // Get nearby users count
+      final nearbyUsers = await _locationService.getNearbyUsers();
+      setState(() {
+        _nearbyMemoriesCount = nearbyUsers.length;
+      });
+    } catch (e) {
+      debugPrint('Error loading location data: $e');
+      setState(() {
+        _currentLocation = 'Location unavailable';
+        _nearbyMemoriesCount = 0;
+      });
     }
   }
 
@@ -333,12 +378,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isActive 
             ? theme.colorScheme.primary.withOpacity(0.15)
             : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isActive 
               ? theme.colorScheme.primary.withOpacity(0.3)
@@ -358,17 +403,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: isActive 
                   ? theme.colorScheme.primary 
                   : Colors.white.withOpacity(0.7),
-                size: 22,
+                size: 20,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 color: isActive 
                   ? theme.colorScheme.primary 
                   : Colors.white.withOpacity(0.7),
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 letterSpacing: 0.2,
               ),
@@ -391,6 +436,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
     
     if (_isLoading) {
       return Scaffold(
@@ -457,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -501,185 +547,192 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Container(
-          height: MediaQuery.of(context).size.height,
-          child: Stack(
-            children: [
-              // AR Camera View (Placeholder)
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        theme.colorScheme.primary.withOpacity(0.3),
-                        Colors.black,
-                        theme.colorScheme.secondary.withOpacity(0.2),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.camera_alt,
-                          color: Colors.white.withOpacity(0.3),
-                          size: 80,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'AR Camera View',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Point your camera to see AR content',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+      body: Stack(
+        children: [
+          // AR Camera View
+          if (_isCameraActive && _arService.getCameraPreview() != null)
+            Positioned.fill(
+              child: _arService.getCameraPreview()!,
+            )
+          else
+            // Fallback gradient background
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.primary.withOpacity(0.3),
+                      Colors.black,
+                      theme.colorScheme.secondary.withOpacity(0.2),
+                    ],
                   ),
                 ),
-              ),
-              
-              // AR Overlay Elements
-              Positioned(
-                top: 100,
-                left: 20,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withOpacity(0.5),
-                        width: 1,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.camera_alt,
+                        color: Colors.white.withOpacity(0.3),
+                        size: 80,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: theme.colorScheme.primary,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'San Francisco, CA',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Nearby Memories Indicator
-              Positioned(
-                top: 100,
-                right: 20,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: theme.colorScheme.secondary.withOpacity(0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.place,
-                          color: theme.colorScheme.secondary,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '12 memories nearby',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Create Button (Floating Action Button)
-              Positioned(
-                bottom: 100,
-                right: 20,
-                child: ScaleTransition(
-                  scale: _pulseAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: FloatingActionButton(
-                      onPressed: _showCreateModal,
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 8,
-                      child: const Icon(Icons.add, size: 32),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Bottom Navigation Hint
-              Positioned(
-                bottom: 40,
-                left: 0,
-                right: 0,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        'Swipe up to explore more',
+                      const SizedBox(height: 16),
+                      Text(
+                        'AR Camera View',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 18,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Point your camera to see AR content',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          
+          // AR Overlay Elements
+          Positioned(
+            top: 100,
+            left: 20,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: theme.colorScheme.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        _currentLocation,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Nearby Memories Indicator
+          Positioned(
+            top: 100,
+            right: 20,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.secondary.withOpacity(0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.place,
+                      color: theme.colorScheme.secondary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '$_nearbyMemoriesCount memories nearby',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Create Button (Floating Action Button)
+          Positioned(
+            bottom: 100,
+            right: 20,
+            child: ScaleTransition(
+              scale: _pulseAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: FloatingActionButton(
+                  onPressed: _showCreateModal,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  child: const Icon(Icons.add, size: 32),
+                ),
+              ),
+            ),
+          ),
+          
+          // Bottom Navigation Hint
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    'Swipe up to explore more',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

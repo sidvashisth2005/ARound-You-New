@@ -1,434 +1,688 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:around_you/theme/theme.dart';
-import 'package:around_you/services/firebase_service.dart';
+import 'package:around_you/services/ar_service.dart';
+import 'package:around_you/services/location_service.dart';
+import 'package:around_you/services/auth_service.dart';
+import 'package:around_you/widgets/glassmorphic_container.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
 
 class ARMemoryScreen extends StatefulWidget {
-  const ARMemoryScreen({super.key});
+  final String? memoryType;
+  final String? memoryText;
+  final File? mediaFile;
+
+  const ARMemoryScreen({
+    super.key,
+    this.memoryType,
+    this.memoryText,
+    this.mediaFile,
+  });
 
   @override
   State<ARMemoryScreen> createState() => _ARMemoryScreenState();
 }
 
 class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStateMixin {
-  final ImagePicker _picker = ImagePicker();
-  final FirebaseService _firebaseService = FirebaseService();
-  
-  File? _selectedImage;
-  Position? _currentPosition;
-  bool _isPlacing = false;
-  bool _isARReady = false;
-  
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  final ARService _arService = ARService();
+  final LocationService _locationService = LocationService();
+  final AuthService _authService = AuthService();
+
+  late AnimationController _pulseAnimation;
+  late AnimationController _fadeAnimation;
+  late Animation<double> _pulseAnimationValue;
+  late Animation<double> _fadeAnimationValue;
+
+  String _selectedModelId = '';
+  bool _isPlacingModel = false;
+  bool _isModelPlaced = false;
+  String? _currentLocation;
+  List<ARMemory> _nearbyMemories = [];
+  bool _isLoadingMemories = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    _getCurrentLocation();
+    _loadLocationData();
+    _loadNearbyMemories();
+    _selectDefaultModel();
   }
 
   void _initializeAnimations() {
-    _pulseController = AnimationController(
+    _pulseAnimation = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    _pulseAnimation = Tween<double>(
-      begin: 0.95,
-      end: 1.05,
+    _fadeAnimation = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _pulseAnimationValue = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
     ).animate(CurvedAnimation(
-      parent: _pulseController,
+      parent: _pulseAnimation,
       curve: Curves.easeInOut,
     ));
 
-    _pulseController.repeat(reverse: true);
+    _fadeAnimationValue = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimation,
+      curve: Curves.easeInOut,
+    ));
+
+    _pulseAnimation.repeat(reverse: true);
+    _fadeAnimation.forward();
   }
 
-  Future<void> _getCurrentLocation() async {
+  Future<void> _loadLocationData() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showLocationError('Location services are disabled');
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _showLocationError('Location permissions are denied');
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _showLocationError('Location permissions are permanently denied');
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      
-      setState(() {
-        _currentPosition = position;
-        _isARReady = true;
-      });
-    } catch (e) {
-      _showLocationError('Failed to get location: $e');
-    }
-  }
-
-  void _showLocationError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-    }
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
+      final position = await _locationService.getCurrentLocation();
+      if (position != null) {
+        final address = await _locationService.getAddressFromCoordinates(
+          LatLng(position.latitude, position.longitude),
+        );
         setState(() {
-          _selectedImage = File(image.path);
+          _currentLocation = address ?? '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to pick image: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+      debugPrint('Error loading location: $e');
     }
   }
 
-  Future<void> _placeMemory() async {
-    if (_selectedImage == null || _currentPosition == null) {
+  Future<void> _loadNearbyMemories() async {
+    setState(() {
+      _isLoadingMemories = true;
+    });
+
+    try {
+      final position = await _locationService.getCurrentLocation();
+      if (position != null) {
+        final memories = await _arService.getNearbyARMemories(
+          center: LatLng(position.latitude, position.longitude),
+          radiusInKm: 1.0, // Show memories within 1km
+        );
+        setState(() {
+          _nearbyMemories = memories;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading nearby memories: $e');
+    } finally {
+      setState(() {
+        _isLoadingMemories = false;
+      });
+    }
+  }
+
+  void _selectDefaultModel() {
+    final memoryType = widget.memoryType ?? 'text';
+    final model = _arService.getModelByMemoryType(memoryType);
+    if (model != null) {
+      setState(() {
+        _selectedModelId = model.id;
+      });
+    }
+  }
+
+  Future<void> _placeModel() async {
+    if (_selectedModelId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select an image and ensure location is available'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('Please select a 3D model first')),
       );
       return;
     }
 
     setState(() {
-      _isPlacing = true;
+      _isPlacingModel = true;
     });
 
     try {
-      // Here you would integrate with AR plugin to place the 3D model
-      // For now, we'll simulate the placement
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Save memory to Firebase
-      await _firebaseService.createMemory(
-        title: 'AR Memory',
-        description: 'Memory placed at ${_currentPosition!.latitude}, ${_currentPosition!.longitude}',
-        location: _currentPosition!,
-        imageFile: _selectedImage,
+      // Get current user info
+      final userInfo = await _authService.getUserInfo();
+      if (userInfo == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to place memories')),
+        );
+        return;
+      }
+
+      // Get current location
+      final position = await _locationService.getCurrentLocation();
+      if (position == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to get your location')),
+        );
+        return;
+      }
+
+      final coordinates = LatLng(position.latitude, position.longitude);
+
+      // Create AR memory in Firestore
+      final success = await _arService.createARMemory(
+        memoryType: widget.memoryType ?? 'text',
+        title: widget.memoryText ?? 'AR Memory',
+        description: widget.memoryText ?? 'AR Memory',
+        coordinates: coordinates,
+        userId: userInfo['userId']!,
+        userName: userInfo['name']!,
+        mediaFile: widget.mediaFile,
+        textContent: widget.memoryText,
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Memory placed successfully!'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
-        );
-        context.pop();
+      if (success) {
+        setState(() {
+          _isModelPlaced = true;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Memory placed successfully in AR world!')),
+          );
+          
+          // Show success dialog
+          _showSuccessDialog();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to place memory')),
+          );
+        }
       }
     } catch (e) {
+      debugPrint('Error placing model: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to place memory: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+          SnackBar(content: Text('Error placing model: $e')),
         );
       }
     } finally {
       setState(() {
-        _isPlacing = false;
+        _isPlacingModel = false;
       });
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black.withOpacity(0.9),
+        title: const Text(
+          'Memory Placed! 🎉',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Your ${widget.memoryType ?? 'memory'} has been placed in the AR world!',
+              style: const TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Other users nearby can now see and interact with your memory.',
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.pop(); // Go back to previous screen
+            },
+            child: const Text('Continue', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showModelSelector() {
+    final availableModels = _arService.getAvailableModels();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.9),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Select 3D Model',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: availableModels.length,
+                itemBuilder: (context, index) {
+                  final model = availableModels[index];
+                  final isSelected = _selectedModelId == model.id;
+                  
+                  return ListTile(
+                    leading: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                            : Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _getModelIcon(model.id),
+                        color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                    title: Text(
+                      model.name,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white.withOpacity(0.8),
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      model.description,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: isSelected 
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedModelId = model.id;
+                      });
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getModelIcon(String modelId) {
+    switch (modelId) {
+      case 'photo':
+        return Icons.photo;
+      case 'video':
+        return Icons.videocam;
+      case 'text':
+        return Icons.text_fields;
+      case 'audio':
+        return Icons.mic;
+      default:
+        return Icons.view_in_ar;
     }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _pulseAnimation.dispose();
+    _fadeAnimation.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('AR Memory'),
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
+        title: const Text(
+          'AR Memory Placement',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            onPressed: () => _showInfoDialog(),
+          ),
+        ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.elegantGradient),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // AR Camera View Placeholder
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: theme.colorScheme.surface.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Stack(
+      body: Stack(
         children: [
-                      // Camera placeholder
-                      Center(
+          // AR Camera View (Mock)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.blue.withOpacity(0.3),
+                  Colors.purple.withOpacity(0.3),
+                  Colors.orange.withOpacity(0.3),
+                ],
+              ),
+            ),
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                            Icon(
-                              Icons.camera_alt,
-                              size: 80,
-                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
+                  AnimatedBuilder(
+                    animation: _pulseAnimationValue,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _pulseAnimationValue.value,
+                        child: Icon(
+                          Icons.camera_alt,
+                          size: 100,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
                     'AR Camera View',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Point camera at a flat surface',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Memory Info Card
+                  if (widget.memoryText != null || widget.mediaFile != null)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
                         ),
                       ),
-                      
-                      // 3D Photo Frame Preview
-                      if (_selectedImage != null)
-                        Positioned(
-                          top: 20,
-                          right: 20,
-                          child: AnimatedBuilder(
-                            animation: _pulseAnimation,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _pulseAnimation.value,
-                                child: Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: theme.colorScheme.primary,
-                                      width: 2,
-                                    ),
-                                    boxShadow: AppTheme.cardShadows,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.file(
-                                      _selectedImage!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
+                      child: Column(
+                        children: [
+                          if (widget.mediaFile != null) ...[
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1,
                                 ),
-                              );
-                            },
-                          ),
-                        ),
-                      
-                      // Location indicator
-                      if (_currentPosition != null)
-                        Positioned(
-                          bottom: 20,
-                          left: 20,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: AppTheme.glassPanelDecoration,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.location_on,
-                                  color: theme.colorScheme.primary,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                   Text(
-                                  'Location Ready',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child: widget.memoryType == 'photo'
+                                    ? Image.file(
+                                        widget.mediaFile!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        child: Icon(
+                                          widget.memoryType == 'video' ? Icons.videocam : Icons.mic,
+                                          color: Colors.white.withOpacity(0.7),
+                                          size: 32,
+                                        ),
+                                      ),
+                              ),
                             ),
-                          ),
-                  ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (widget.memoryText != null)
+                            Text(
+                              widget.memoryText!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-
-              // Control Panel
-              Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: AppTheme.elegantCardDecoration,
-                child: Column(
-                  children: [
-                    // Image Selection
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _pickImage(ImageSource.camera),
-                            icon: const Icon(Icons.camera_alt),
-                            label: const Text('Camera'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.secondary,
-                              foregroundColor: theme.colorScheme.onSecondary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _pickImage(ImageSource.gallery),
-                            icon: const Icon(Icons.photo_library),
-                            label: const Text('Gallery'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.secondary,
-                              foregroundColor: theme.colorScheme.onSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Selected Image Display
-                    if (_selectedImage != null) ...[
-                      Container(
-                        width: double.infinity,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(11),
-                          child: Image.file(
-                            _selectedImage!,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    
-                    // Place Memory Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isARReady && _selectedImage != null && !_isPlacing
-                            ? _placeMemory
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                        ),
-                        child: _isPlacing
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        theme.colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Placing Memory...'),
-                                ],
-                              )
-                            : const Text('Place Memory in AR'),
-                      ),
-                    ),
-                    
-                    if (!_isARReady) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.warning,
-                              color: theme.colorScheme.error,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Location access required for AR placement',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+          
+          // Bottom Controls
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.8),
+                    Colors.black,
                   ],
                 ),
               ),
-            ],
+              child: Column(
+                children: [
+                  // Model Selector Button
+                  GlassmorphicContainer(
+                    width: double.infinity,
+                    height: 60,
+                    borderRadius: 16,
+                    blur: 10,
+                    border: 1.5,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: _showModelSelector,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _getModelIcon(_selectedModelId),
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedModelId.isNotEmpty 
+                                      ? 'Selected: ${_selectedModelId.toUpperCase()} Model'
+                                      : 'Select 3D Model',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Place Model Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isPlacingModel || _isModelPlaced ? null : _placeModel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isModelPlaced 
+                            ? Colors.green 
+                            : Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isPlacingModel
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              _isModelPlaced ? 'Memory Placed! ✅' : 'Place in AR World',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Nearby Memories Info
+                  if (_nearbyMemories.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${_nearbyMemories.length} memories nearby',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black.withOpacity(0.9),
+        title: const Text(
+          'AR Memory Placement',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'How it works:',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '• Select a 3D model that matches your memory type\n'
+              '• Point your camera at a flat surface\n'
+              '• Tap "Place in AR World" to position your memory\n'
+              '• Your memory will be visible to other users nearby\n'
+              '• Memories are stored with real GPS coordinates',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

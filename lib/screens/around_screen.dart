@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:around_you/services/location_service.dart';
 
 class AroundScreen extends StatefulWidget {
   const AroundScreen({super.key});
@@ -24,9 +25,12 @@ class _AroundScreenState extends State<AroundScreen>
   late Animation<Offset> _slideAnimation;
   
   int _selectedTabIndex = 0;
+  final LocationService _locationService = LocationService();
+  List<Map<String, dynamic>> _nearbyUsers = [];
+  bool _isLoadingUsers = false;
   
-  // Mock nearby users data
-  final List<Map<String, dynamic>> _nearbyUsers = [
+  // Mock nearby users data (fallback)
+  final List<Map<String, dynamic>> _fallbackUsers = [
     {
       'id': 'user1',
       'name': 'Sarah Chen',
@@ -116,6 +120,7 @@ class _AroundScreenState extends State<AroundScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadNearbyUsers();
     _radarController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -188,6 +193,25 @@ class _AroundScreenState extends State<AroundScreen>
   void _viewProfile(String userId) {
     // Navigate to user profile
     context.push('/profile?userId=$userId');
+  }
+
+  Future<void> _loadNearbyUsers() async {
+    setState(() {
+      _isLoadingUsers = true;
+    });
+
+    try {
+      final users = await _locationService.getNearbyUsers();
+      setState(() {
+        _nearbyUsers = users.isNotEmpty ? users : _fallbackUsers;
+        _isLoadingUsers = false;
+      });
+    } catch (e) {
+      setState(() {
+        _nearbyUsers = _fallbackUsers;
+        _isLoadingUsers = false;
+      });
+    }
   }
 
   @override
@@ -484,8 +508,8 @@ class _AroundScreenState extends State<AroundScreen>
                             children: [
                               Text(
                                 user['name'],
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -510,7 +534,7 @@ class _AroundScreenState extends State<AroundScreen>
                               Text(
                                 '${user['distance']} km away • ${user['lastSeen']}',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -554,7 +578,7 @@ class _AroundScreenState extends State<AroundScreen>
                                 onPressed: () => _viewProfile(user['id']),
                                 icon: Icon(
                                   Icons.person_outline,
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
                                   size: 24,
                                 ),
                               ),

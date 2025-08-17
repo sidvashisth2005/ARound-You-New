@@ -189,10 +189,9 @@ class DesignSystem {
     String? Function(String?)? validator,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
-    Widget? prefixIcon,
-    Widget? suffixIcon,
+    IconData? prefixIcon,
+    IconData? suffixIcon,
     FocusNode? focusNode,
-    // Remove onEditingComplete as it's not supported in AnimatedFormField
     ValueChanged<String>? onChanged,
     BuildContext? context,
   }) {
@@ -201,18 +200,15 @@ class DesignSystem {
 
     return AnimatedFormField(
       controller: controller,
-      labelText: labelText,
-      hintText: hintText,
+      labelText: labelText ?? '',
+      hintText: hintText ?? '',
       validator: validator,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      prefixIcon: prefixIcon,
+      prefixIcon: prefixIcon ?? Icons.edit,
       suffixIcon: suffixIcon,
       focusNode: focusNode,
-      // onEditingComplete removed as it's not supported
       onChanged: onChanged,
-      // Remove style parameter as it's not supported
-      // Use default styling instead
     );
   }
 
@@ -242,11 +238,9 @@ class DesignSystem {
       padding: padding ?? const EdgeInsets.all(spacingM),
       borderRadius: borderRadius,
       blur: blur,
-      // opacity parameter removed as it's not supported in GlassmorphicContainer
       borderColor: border,
       backgroundColor: bgColor,
-      boxShadow: boxShadow ?? AppTheme.subtleShadows,
-      gradient: gradient,
+      boxShadow: boxShadow,
       onTap: onTap,
       width: width,
       height: height,

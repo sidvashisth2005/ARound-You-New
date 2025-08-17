@@ -1,15 +1,18 @@
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter/foundation.dart';
+import '../config/secrets.dart';
 
 class CloudinaryService {
   static final CloudinaryService _instance = CloudinaryService._internal();
   factory CloudinaryService() => _instance;
   CloudinaryService._internal();
 
-  // Replace these with your actual Cloudinary credentials
-  static const String _cloudName = 'decbyhxrz';
-  static const String _uploadPreset = 'around_you_uploads';
+  // Cloudinary credentials from secrets file
+  static const String _cloudName = Secrets.cloudinaryCloudName;
+  static const String _apiKey = Secrets.cloudinaryApiKey;
+  static const String _apiSecret = Secrets.cloudinaryApiSecret;
+  static const String _uploadPreset = Secrets.cloudinaryUploadPreset;
   
   late CloudinaryPublic _cloudinary;
 
@@ -44,6 +47,62 @@ class CloudinaryService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Failed to upload image: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Upload a video file to Cloudinary
+  Future<String?> uploadVideo(File videoFile, {String? folder}) async {
+    try {
+      if (kDebugMode) {
+        print('🎥 Uploading video to Cloudinary...');
+      }
+
+      CloudinaryResponse response = await _cloudinary.uploadFile(
+        CloudinaryFile.fromFile(
+          videoFile.path,
+          resourceType: CloudinaryResourceType.Video,
+          folder: folder ?? 'around_you/videos',
+        ),
+      );
+
+      if (kDebugMode) {
+        print('✅ Video uploaded successfully: ${response.secureUrl}');
+      }
+
+      return response.secureUrl;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to upload video: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Upload an audio file to Cloudinary
+  Future<String?> uploadAudio(File audioFile, {String? folder}) async {
+    try {
+      if (kDebugMode) {
+        print('🎵 Uploading audio to Cloudinary...');
+      }
+
+      CloudinaryResponse response = await _cloudinary.uploadFile(
+        CloudinaryFile.fromFile(
+          audioFile.path,
+          resourceType: CloudinaryResourceType.Video, // Cloudinary uses video for audio
+          folder: folder ?? 'around_you/audio',
+        ),
+      );
+
+      if (kDebugMode) {
+        print('✅ Audio uploaded successfully: ${response.secureUrl}');
+      }
+
+      return response.secureUrl;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to upload audio: $e');
       }
       rethrow;
     }

@@ -57,7 +57,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       final permissionService = PermissionService();
       
       // Check if location permission is granted
-      if (!permissionService.locationPermissionGranted) {
+      if (!await permissionService.isLocationPermissionGranted()) {
         final granted = await permissionService.requestLocationPermission();
         if (!granted) {
           setState(() {
@@ -69,7 +69,7 @@ class _HomeMapScreenState extends State<HomeMapScreen> {
       }
 
       // Check if location services are enabled
-      final locationEnabled = await permissionService.checkLocationServiceStatus();
+      final locationEnabled = await permissionService.requestLocationPermission();
       if (!locationEnabled) {
         setState(() {
           _errorMessage = 'Please enable location services to see your position on the map.';

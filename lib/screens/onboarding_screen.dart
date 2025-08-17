@@ -190,7 +190,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
 
               // Bottom Navigation
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.fromLTRB(32, 32, 32, 43), // Added bottom padding to prevent overflow
                 child: Column(
                   children: [
                     // Page Indicators

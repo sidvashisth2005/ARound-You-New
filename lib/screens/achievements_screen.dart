@@ -246,7 +246,21 @@ class _AchievementsScreenState extends State<AchievementsScreen>
               child: Container(
                 margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
                 padding: const EdgeInsets.all(20),
-                decoration: AppTheme.elegantCardDecoration,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -431,7 +445,21 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     return GestureDetector(
       onTap: () => _showAchievementDetails(context, achievement),
       child: Container(
-        decoration: AppTheme.elegantCardDecoration,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.primary.withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             // Achievement Icon with Progress Ring

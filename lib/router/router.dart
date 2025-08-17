@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:around_you/services/auth_service.dart';
 
 // Import all your screen files here
 import 'package:around_you/screens/onboarding_screen.dart';
@@ -17,9 +18,25 @@ import 'package:around_you/screens/chat_screen.dart';
 import 'package:around_you/screens/help_screen.dart';
 import 'package:around_you/utils/page_transitions.dart';
 
-// Simple router without authentication for now
+// Router with authentication handling
 final router = GoRouter(
   initialLocation: '/onboarding',
+  redirect: (context, state) async {
+    final authService = AuthService();
+    final isLoggedIn = await authService.isLoggedIn();
+    
+    // If user is not logged in and trying to access protected routes
+    if (!isLoggedIn && state.matchedLocation != '/onboarding' && state.matchedLocation != '/login') {
+      return '/login';
+    }
+    
+    // If user is logged in and trying to access login/onboarding
+    if (isLoggedIn && (state.matchedLocation == '/login' || state.matchedLocation == '/onboarding')) {
+      return '/home';
+    }
+    
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/onboarding',

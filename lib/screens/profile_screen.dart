@@ -321,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             
             // Tab content
             SizedBox(
-              height: 400, // Fixed height for tab content
+              height: 406, // Increased height to fix overflow
               child: TabBarView(
                 controller: _tabController,
                 children: [
@@ -378,7 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final theme = Theme.of(context);
     
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 22.0), // Added bottom padding to fix overflow
       itemCount: _memories.length,
       itemBuilder: (context, index) {
         final memory = _memories[index];
@@ -476,7 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final theme = Theme.of(context);
     
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 24.5), // Added bottom padding to fix overflow
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,
@@ -619,7 +619,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     final theme = Theme.of(context);
     
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 27.0), // Added bottom padding to fix overflow
       children: [
         _buildInfoItem(context, 'Full Name', 'John Doe', Icons.person),
         _buildInfoItem(context, 'Email', 'john.doe@example.com', Icons.email),
