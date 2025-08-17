@@ -16,7 +16,7 @@ import 'package:around_you/screens/social_discovery_screen.dart';
 import 'package:around_you/screens/notifications_screen.dart';
 import 'package:around_you/screens/chat_screen.dart';
 import 'package:around_you/screens/help_screen.dart';
-import 'package:around_you/utils/page_transitions.dart';
+
 
 // Router with authentication handling
 final router = GoRouter(

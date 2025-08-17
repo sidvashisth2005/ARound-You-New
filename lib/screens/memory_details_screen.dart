@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:around_you/widgets/glassmorphic_container.dart';
+
 
 class MemoryDetailsScreen extends StatelessWidget {
   final String memoryId;
@@ -27,12 +27,24 @@ class MemoryDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlassmorphicContainer(
+            Container(
               width: double.infinity,
               height: 200,
-              borderRadius: 20,
-              blur: 20,
-              border: 2,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -63,12 +75,24 @@ class MemoryDetailsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            GlassmorphicContainer(
+            Container(
               width: double.infinity,
               height: 200,
-              borderRadius: 15,
-              blur: 20,
-              border: 2,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: const Column(

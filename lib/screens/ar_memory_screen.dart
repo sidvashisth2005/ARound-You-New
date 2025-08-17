@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:around_you/services/ar_service.dart';
 import 'package:around_you/services/location_service.dart';
 import 'package:around_you/services/auth_service.dart';
-import 'package:around_you/widgets/glassmorphic_container.dart';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
 
@@ -525,12 +525,24 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
               child: Column(
                 children: [
                   // Model Selector Button
-                  GlassmorphicContainer(
+                  Container(
                     width: double.infinity,
                     height: 60,
-                    borderRadius: 16,
-                    blur: 10,
-                    border: 1.5,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
