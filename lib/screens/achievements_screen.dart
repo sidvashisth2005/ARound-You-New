@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:around_you/services/auth_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
@@ -51,102 +53,9 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     },
   ];
 
-  // Dynamic achievements data
-  final List<Map<String, dynamic>> _achievements = [
-    {
-      'id': 'ach1',
-      'title': 'First Memory',
-      'description': 'Create your first memory in the app',
-      'icon': Icons.flag_rounded,
-      'category': 'Exploration',
-      'unlocked': true,
-      'progress': 1.0,
-      'xpReward': 100,
-      'unlockDate': '2024-01-15',
-      'rarity': 'Common',
-    },
-    {
-      'id': 'ach2',
-      'title': 'Explorer',
-      'description': 'Visit 5 different locations',
-      'icon': Icons.explore_rounded,
-      'category': 'Exploration',
-      'unlocked': true,
-      'progress': 1.0,
-      'xpReward': 250,
-      'unlockDate': '2024-01-20',
-      'rarity': 'Uncommon',
-    },
-    {
-      'id': 'ach3',
-      'title': 'Social Butterfly',
-      'description': 'Connect with 10 friends',
-      'icon': Icons.people_rounded,
-      'category': 'Social',
-      'unlocked': true,
-      'progress': 1.0,
-      'xpReward': 300,
-      'unlockDate': '2024-01-25',
-      'rarity': 'Rare',
-    },
-    {
-      'id': 'ach4',
-      'title': 'Trailblazer',
-      'description': 'Create memories in 10 unique locations',
-      'icon': Icons.location_on_rounded,
-      'category': 'Exploration',
-      'unlocked': false,
-      'progress': 0.6,
-      'xpReward': 500,
-      'rarity': 'Epic',
-    },
-    {
-      'id': 'ach5',
-      'title': 'AR Master',
-      'description': 'Place 20 memories in AR world',
-      'icon': Icons.view_in_ar_rounded,
-      'category': 'Mastery',
-      'unlocked': false,
-      'progress': 0.35,
-      'xpReward': 750,
-      'rarity': 'Legendary',
-    },
-    {
-      'id': 'ach6',
-      'title': 'Heartfelt',
-      'description': 'Receive 50 likes on your memories',
-      'icon': Icons.favorite_rounded,
-      'category': 'Social',
-      'unlocked': true,
-      'progress': 1.0,
-      'xpReward': 200,
-      'unlockDate': '2024-02-01',
-      'rarity': 'Uncommon',
-    },
-    {
-      'id': 'ach7',
-      'title': 'Creative Genius',
-      'description': 'Create 25 unique memories',
-      'icon': Icons.brush_rounded,
-      'category': 'Creativity',
-      'unlocked': false,
-      'progress': 0.8,
-      'xpReward': 400,
-      'rarity': 'Rare',
-    },
-    {
-      'id': 'ach8',
-      'title': 'Community Leader',
-      'description': 'Start 5 community discussions',
-      'icon': Icons.forum_rounded,
-      'category': 'Social',
-      'unlocked': false,
-      'progress': 0.2,
-      'xpReward': 600,
-      'rarity': 'Epic',
-    },
-  ];
-
+  late Stream<QuerySnapshot> _achievementsStream;
+  List<Map<String, dynamic>> _achievements = [];
+  
   @override
   void initState() {
     super.initState();
@@ -190,6 +99,36 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     _fadeController.forward();
     _slideController.forward();
     _pulseController.repeat(reverse: true);
+    _bindAchievements();
+  }
+
+  Future<void> _bindAchievements() async {
+    final auth = AuthService();
+    final userId = await auth.getUserId();
+    if (userId == null) return;
+    _achievementsStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('achievements')
+        .snapshots();
+    _achievementsStream.listen((snapshot) {
+      final items = snapshot.docs.map((d) {
+        final data = d.data() as Map<String, dynamic>;
+        return {
+          'id': d.id,
+          'title': data['title'] ?? 'Achievement',
+          'description': data['description'] ?? '',
+          'icon': Icons.emoji_events_rounded,
+          'category': data['category'] ?? 'All',
+          'unlocked': data['unlocked'] ?? false,
+          'progress': (data['progress'] ?? 0).toDouble(),
+          'xpReward': data['xpReward'] ?? 0,
+          'unlockDate': data['unlockDate'],
+          'rarity': data['rarity'] ?? 'Common',
+        };
+      }).toList();
+      if (mounted) setState(() => _achievements = items);
+    });
   }
 
   @override

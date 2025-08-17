@@ -26,6 +26,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
   final CloudinaryService _cloudinaryService = CloudinaryService();
 
   String _selectedMemoryType = 'text';
+  String? _selectedModelId;
   File? _selectedMediaFile;
   String? _currentLocation;
   bool _isLoading = false;
@@ -118,7 +119,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
 
       final coordinates = LatLng(position.latitude, position.longitude);
 
-      // Create AR memory
+      // Create AR memory with selected model if provided
       final success = await _arService.createARMemory(
         memoryType: _selectedMemoryType,
         title: _textController.text.trim(),
@@ -128,6 +129,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         userName: userInfo['name']!,
         mediaFile: _selectedMediaFile,
         textContent: _selectedMemoryType == 'text' ? _textController.text.trim() : null,
+        modelId: _selectedModelId,
       );
 
       if (success) {
@@ -172,6 +174,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
       'memoryType': _selectedMemoryType,
       'memoryText': _textController.text.trim(),
       'mediaFile': _selectedMediaFile,
+      'modelId': _selectedModelId,
     });
   }
 
@@ -261,15 +264,16 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: memoryTypes.map((type) {
-          final isSelected = _selectedMemoryType == type['type'] as String;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedMemoryType = type['type'] as String;
-                _selectedMediaFile = null; // Clear selected media when changing type
-              });
-            },
+          children: memoryTypes.map((type) {
+            final isSelected = _selectedMemoryType == type['type'] as String;
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedMemoryType = type['type'] as String;
+                  _selectedMediaFile = null; // Clear selected media when changing type
+                });
+                _openModelSelector();
+              },
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -304,6 +308,94 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               ),
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _openModelSelector() {
+    final available = _arService.getAvailableModels();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.9),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Select 3D Model',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: available.length,
+                itemBuilder: (context, index) {
+                  final model = available[index];
+                  final isSelected = _selectedModelId == model.id;
+                  return ListTile(
+                    leading: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                            : Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          model.name.substring(0, 1),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      model.name,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white.withOpacity(0.8),
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      model.description,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedModelId = model.id;
+                      });
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
         ),
       ),
     );
@@ -564,7 +656,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: _isCreatingMemory ? null : _createMemory,
+            onPressed: _isCreatingMemory ? null : _showARMemoryScreen,
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
@@ -583,7 +675,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                     ),
                   )
                 : const Text(
-                    'Create Memory',
+                    'Continue to AR',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

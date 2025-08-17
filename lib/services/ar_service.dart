@@ -179,6 +179,11 @@ class ARService {
     return _availableModels[memoryType.toLowerCase()];
   }
 
+  /// Get model by id
+  AR3DModel? getModelById(String modelId) {
+    return _availableModels[modelId];
+  }
+
   /// Create and store AR memory in Firestore
   Future<bool> createARMemory({
     required String memoryType,
@@ -191,12 +196,17 @@ class ARService {
     String? mediaUrl,
     String? textContent,
     Map<String, dynamic>? additionalData,
+    String? modelId,
   }) async {
     try {
       debugPrint('Creating AR memory: $memoryType at ${coordinates.latitude}, ${coordinates.longitude}');
 
       // Get the appropriate 3D model
-      final model = getModelByMemoryType(memoryType);
+      AR3DModel? model;
+      if (modelId != null) {
+        model = getModelById(modelId);
+      }
+      model ??= getModelByMemoryType(memoryType);
       if (model == null) {
         debugPrint('❌ No 3D model found for memory type: $memoryType');
         return false;

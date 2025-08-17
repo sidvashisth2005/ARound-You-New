@@ -37,6 +37,7 @@ dependencies:
   intl: ^0.19.0 # For date/time formatting
   shared_preferences: ^2.2.2 # For storing user preferences
   connectivity_plus: ^5.0.2 # For checking network connectivity
+  lottie: ^3.1.0
 
   cupertino_icons: ^1.0.2
 
@@ -60,6 +61,9 @@ flutter:
     - assets/models/video_frame.glb
     - assets/models/text_display.glb
     - assets/models/audio_player.glb
+    - Animation while launching.json
+    - Animation after creating memory.json
+    - Intermidiate Loading.json
 
   # fonts:
   #   - family: Schyler
