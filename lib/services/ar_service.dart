@@ -58,7 +58,12 @@ class ARService {
   /// Initialize camera for AR functionality
   Future<bool> initializeCamera() async {
     try {
-      if (_isInitialized) return true;
+      if (_isInitialized && isCameraReady) return true;
+      
+      // Dispose existing camera if any
+      if (_cameraController != null) {
+        await disposeCamera();
+      }
       
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
@@ -86,19 +91,39 @@ class ARService {
       return true;
     } catch (e) {
       debugPrint('❌ Error initializing camera: $e');
+      // Cleanup on error
+      await disposeCamera();
       return false;
     }
   }
 
-  /// Get camera controller
-  CameraController? get cameraController => _cameraController;
+  /// Get camera controller safely
+  CameraController? get cameraController {
+    if (isCameraReady) {
+      return _cameraController;
+    }
+    debugPrint('⚠️ Camera controller not ready');
+    return null;
+  }
+
+  /// Get camera controller with health check
+  Future<CameraController?> getCameraControllerSafe() async {
+    if (await ensureCameraHealth()) {
+      return _cameraController;
+    }
+    return null;
+  }
 
   /// Check if camera is initialized
   bool get isInitialized => _isInitialized;
 
+  /// Check if camera is ready for use
+  bool get isCameraReady => _isInitialized && _cameraController != null && _cameraController!.value.isInitialized;
+
   /// Get camera preview widget
   Widget? getCameraPreview() {
-    if (!_isInitialized || _cameraController == null) {
+    if (!isCameraReady) {
+      debugPrint('❌ Camera not ready for preview');
       return null;
     }
     
@@ -107,18 +132,32 @@ class ARService {
 
   /// Dispose camera resources
   Future<void> disposeCamera() async {
-    if (_cameraController != null) {
-      await _cameraController!.dispose();
-      _cameraController = null;
+    try {
+      if (_cameraController != null) {
+        if (_cameraController!.value.isInitialized) {
+          await _cameraController!.dispose();
+        }
+        _cameraController = null;
+      }
+      _isInitialized = false;
+      _cameras = null;
+      debugPrint('✅ Camera disposed successfully');
+    } catch (e) {
+      debugPrint('❌ Error disposing camera: $e');
     }
-    _isInitialized = false;
+  }
+
+  /// Cleanup all resources
+  Future<void> cleanup() async {
+    await disposeCamera();
+    debugPrint('✅ AR Service cleaned up');
   }
 
   /// Take a photo for AR memory
   Future<File?> takePhoto() async {
     try {
-      if (!_isInitialized || _cameraController == null) {
-        debugPrint('❌ Camera not initialized');
+      if (!isCameraReady) {
+        debugPrint('❌ Camera not ready for taking photo');
         return null;
       }
 
@@ -461,6 +500,168 @@ class ARService {
 
       return memories;
     });
+  }
+
+  /// Handle camera errors and attempt recovery
+  Future<bool> handleCameraError() async {
+    try {
+      debugPrint('🔄 Attempting to recover from camera error...');
+      await disposeCamera();
+      await Future.delayed(const Duration(seconds: 1)); // Wait before retry
+      return await initializeCamera();
+    } catch (e) {
+      debugPrint('❌ Failed to recover from camera error: $e');
+      return false;
+    }
+  }
+
+  /// Handle camera errors with multiple recovery attempts
+  Future<bool> handleCameraErrorWithRetry({int maxRetries = 3}) async {
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('🔄 Camera recovery attempt $attempt/$maxRetries...');
+        await disposeCamera();
+        await Future.delayed(Duration(seconds: attempt)); // Progressive delay
+        
+        if (await initializeCamera()) {
+          debugPrint('✅ Camera recovered successfully on attempt $attempt');
+          return true;
+        }
+      } catch (e) {
+        debugPrint('❌ Camera recovery attempt $attempt failed: $e');
+      }
+    }
+    
+    debugPrint('❌ Failed to recover camera after $maxRetries attempts');
+    return false;
+  }
+
+  /// Check camera health and reinitialize if needed
+  Future<bool> ensureCameraHealth() async {
+    if (!isCameraReady) {
+      debugPrint('🔄 Camera not healthy, reinitializing...');
+      return await initializeCamera();
+    }
+    return true;
+  }
+
+  /// Handle app lifecycle changes
+  Future<void> onAppLifecycleChanged(AppLifecycleState state) async {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        debugPrint('📱 App going to background, disposing camera...');
+        await disposeCamera();
+        break;
+      case AppLifecycleState.resumed:
+        debugPrint('📱 App resumed, reinitializing camera...');
+        await initializeCamera();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /// Pause camera (for temporary suspension)
+  Future<void> pauseCamera() async {
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      try {
+        await _cameraController!.pausePreview();
+        debugPrint('⏸️ Camera paused');
+      } catch (e) {
+        debugPrint('❌ Error pausing camera: $e');
+      }
+    }
+  }
+
+  /// Resume camera (after pause)
+  Future<void> resumeCamera() async {
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      try {
+        await _cameraController!.resumePreview();
+        debugPrint('▶️ Camera resumed');
+      } catch (e) {
+        debugPrint('❌ Error resuming camera: $e');
+      }
+    }
+  }
+
+  /// Check camera permissions and handle accordingly
+  Future<bool> checkCameraPermissions() async {
+    try {
+      // This would typically integrate with your permission service
+      // For now, we'll assume permissions are granted if we can access cameras
+      final cameras = await availableCameras();
+      return cameras.isNotEmpty;
+    } catch (e) {
+      debugPrint('❌ Camera permission check failed: $e');
+      return false;
+    }
+  }
+
+  /// Initialize camera with permission check
+  Future<bool> initializeCameraWithPermissions() async {
+    if (!await checkCameraPermissions()) {
+      debugPrint('❌ Camera permissions not granted');
+      return false;
+    }
+    return await initializeCamera();
+  }
+
+  /// Get detailed camera status for debugging
+  Map<String, dynamic> getCameraStatus() {
+    return {
+      'isInitialized': _isInitialized,
+      'hasCameraController': _cameraController != null,
+      'isCameraReady': isCameraReady,
+      'cameraCount': _cameras?.length ?? 0,
+      'cameraState': _cameraController?.value.toString() ?? 'null',
+    };
+  }
+
+  /// Log camera status for debugging
+  void logCameraStatus() {
+    final status = getCameraStatus();
+    debugPrint('📷 Camera Status: $status');
+  }
+
+  /// Validate camera setup
+  Future<bool> validateCameraSetup() async {
+    try {
+      logCameraStatus();
+      
+      if (!_isInitialized) {
+        debugPrint('❌ Camera not initialized');
+        return false;
+      }
+      
+      if (_cameraController == null) {
+        debugPrint('❌ Camera controller is null');
+        return false;
+      }
+      
+      if (!_cameraController!.value.isInitialized) {
+        debugPrint('❌ Camera controller not initialized');
+        return false;
+      }
+      
+      debugPrint('✅ Camera setup is valid');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Camera validation failed: $e');
+      return false;
+    }
+  }
+
+  /// Monitor camera state changes
+  void addCameraStateListener(VoidCallback listener) {
+    _cameraController?.addListener(listener);
+  }
+
+  /// Remove camera state listener
+  void removeCameraStateListener(VoidCallback listener) {
+    _cameraController?.removeListener(listener);
   }
 }
 

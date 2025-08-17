@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'dart:ui';
 import 'dart:math' as math;
 import '../main.dart';
 import '../widgets/glassmorphic_container.dart';
@@ -252,12 +251,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Level ${_userData['level']}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          'Level ${_userData['level']}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       Text(
@@ -322,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             
             // Tab content
             SizedBox(
-              height: 406, // Increased height to fix overflow
+              height: 450, // Increased height to fix overflow
               child: TabBarView(
                 controller: _tabController,
                 children: [

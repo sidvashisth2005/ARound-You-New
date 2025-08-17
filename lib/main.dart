@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:around_you/firebase_options.dart';
+import 'package:around_you/services/auth_service.dart';
+import 'package:around_you/services/cloudinary_service.dart';
+import 'package:around_you/services/permission_service.dart';
+import 'package:around_you/services/location_service.dart';
+import 'package:around_you/services/ar_service.dart';
 import 'package:around_you/router/router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/utils/firebase_checker.dart';
-import 'package:around_you/services/auth_service.dart';
-import 'package:around_you/services/permission_service.dart';
-import 'package:around_you/services/location_service.dart';
-import 'package:around_you/services/cloudinary_service.dart';
-import 'package:around_you/services/ar_service.dart';
-import 'package:go_router/go_router.dart';
 
 // Global navigator key for accessing context outside of build
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -18,9 +19,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   // Initialize services
   await _initializeServices();
@@ -54,8 +53,48 @@ Future<void> _initializeServices() async {
   }
 }
 
-class ARoundYouApp extends StatelessWidget {
+class ARoundYouApp extends StatefulWidget {
   const ARoundYouApp({super.key});
+
+  @override
+  State<ARoundYouApp> createState() => _ARoundYouAppState();
+}
+
+class _ARoundYouAppState extends State<ARoundYouApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Dispose AR service camera to prevent memory leaks
+    ARService().disposeCamera();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Handle app lifecycle changes
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        // Dispose camera when app goes to background
+        ARService().disposeCamera();
+        break;
+      case AppLifecycleState.resumed:
+        // Reinitialize camera when app comes to foreground
+        ARService().initializeCamera();
+        break;
+      default:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
