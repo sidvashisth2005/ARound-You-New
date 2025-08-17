@@ -5,9 +5,6 @@ import 'package:around_you/services/location_service.dart';
 import 'package:around_you/services/ar_service.dart';
 import 'package:around_you/services/auth_service.dart';
 import 'package:around_you/services/cloudinary_service.dart';
-import 'package:around_you/widgets/model_selection_popup.dart';
-import 'package:around_you/widgets/lottie_loading_screen.dart';
-import 'package:around_you/theme/theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
@@ -33,15 +30,12 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
   String? _currentLocation;
   bool _isLoading = false;
   bool _isCreatingMemory = false;
-  AR3DModel? _selected3DModel;
-  bool _showModelSelection = false;
 
   @override
   void initState() {
     super.initState();
     _selectedMemoryType = widget.memoryType ?? 'text';
     _loadLocationData();
-    _showModelSelectionPopup();
   }
 
   Future<void> _loadLocationData() async {
@@ -58,19 +52,6 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
     } catch (e) {
       debugPrint('Error loading location: $e');
     }
-  }
-
-  void _showModelSelectionPopup() {
-    setState(() {
-      _showModelSelection = true;
-    });
-  }
-
-  void _onModelSelected(AR3DModel model) {
-    setState(() {
-      _selected3DModel = model;
-      _showModelSelection = false;
-    });
   }
 
   Future<void> _pickMedia(ImageSource source) async {
@@ -98,11 +79,9 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
       }
     } catch (e) {
       debugPrint('Error picking media: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking media: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking media: $e')),
+      );
     }
   }
 
@@ -110,13 +89,6 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
     if (_textController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a memory description')),
-      );
-      return;
-    }
-
-    if (_selected3DModel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a 3D model first')),
       );
       return;
     }
@@ -129,22 +101,18 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
       // Get current user info
       final userInfo = await _authService.getUserInfo();
       if (userInfo == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in to create memories')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to create memories')),
+        );
         return;
       }
 
       // Get current location
       final position = await _locationService.getCurrentLocation();
       if (position == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to get your location')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to get your location')),
+        );
         return;
       }
 
@@ -200,168 +168,66 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
       return;
     }
 
-    if (_selected3DModel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a 3D model first')),
-      );
-      return;
-    }
-
     context.push('/ar-memory', extra: {
       'memoryType': _selectedMemoryType,
       'memoryText': _textController.text.trim(),
       'mediaFile': _selectedMediaFile,
-      'selected3DModel': _selected3DModel,
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
     
     return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.pureWhite),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Create Memory',
-          style: TextStyle(
-            color: AppTheme.pureWhite,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Stack(
-              children: [
-                // Background gradient
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                  ),
-                ),
-                
-                // Main content
-                SafeArea(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: screenSize.height - MediaQuery.of(context).padding.top - 100,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 100),
-                          
-                          // Memory Type Selector
-                          _buildMemoryTypeSelector(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // 3D Model Selection Status
-                          if (_selected3DModel != null) _buildModelSelectionStatus(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Content Section
-                          _buildContentSection(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Location Section
-                          _buildLocationSection(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // AR Section
-                          _buildARSection(),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Action Buttons
-                          _buildActionButtons(),
-                          
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // 3D Model Selection Popup
-                if (_showModelSelection)
-                  ModelSelectionPopup(
-                    selectedMemoryType: _selectedMemoryType,
-                    onModelSelected: _onModelSelected,
-                  ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildModelSelectionStatus() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.accentGold.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.accentGold.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.check_circle,
-            color: AppTheme.accentGold,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '3D Model Selected',
-                  style: TextStyle(
-                    color: AppTheme.accentGold,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  _selected3DModel?.name ?? '',
-                  style: TextStyle(
-                    color: AppTheme.accentGold.withValues(alpha: 0.8),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _showModelSelectionPopup,
-            child: Text(
-              'Change',
-              style: TextStyle(
-                color: AppTheme.accentGold,
-                fontWeight: FontWeight.w600,
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 100),
+                  
+                  // Memory Type Selector
+                  _buildMemoryTypeSelector(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Content Section
+                  _buildContentSection(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Location Section
+                  _buildLocationSection(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // AR Section
+                  _buildARSection(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Action Buttons
+                  _buildActionButtons(),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -375,60 +241,62 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 80),
+      height: 80,
       decoration: BoxDecoration(
-        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
           width: 1.5,
         ),
-        boxShadow: AppTheme.subtleShadows,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          alignment: WrapAlignment.spaceEvenly,
-          children: memoryTypes.map((type) {
-            final isSelected = _selectedMemoryType == type['type'] as String;
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedMemoryType = type['type'] as String;
-                  _selectedMediaFile = null;
-                  _selected3DModel = null;
-                });
-                _showModelSelectionPopup();
-              },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: memoryTypes.map((type) {
+          final isSelected = _selectedMemoryType == type['type'] as String;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedMemoryType = type['type'] as String;
+                _selectedMediaFile = null; // Clear selected media when changing type
+              });
+            },
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: isSelected 
-                          ? AppTheme.primaryDark.withValues(alpha: 0.3)
+                          ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       type['icon'] as IconData,
                       color: isSelected 
-                          ? AppTheme.pureWhite
-                          : AppTheme.pureWhite.withValues(alpha: 0.7),
-                      size: 24,
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.7),
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     type['label'] as String,
                     style: TextStyle(
                       color: isSelected 
-                          ? AppTheme.pureWhite
-                          : AppTheme.pureWhite.withValues(alpha: 0.7),
-                      fontSize: 12,
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.7),
+                      fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -448,12 +316,12 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         Text(
           'Memory Content',
           style: TextStyle(
-            color: AppTheme.pureWhite.withValues(alpha: 0.9),
-            fontSize: 18,
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         
         // Media picker for photo/video/audio
         if (_selectedMemoryType != 'text') ...[
@@ -464,10 +332,9 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.lightBlue.withValues(alpha: 0.3),
-                  width: 1.5,
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
                 ),
-                boxShadow: AppTheme.subtleShadows,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
@@ -477,12 +344,12 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                         fit: BoxFit.cover,
                       )
                     : Container(
-                        color: AppTheme.subtleGray.withValues(alpha: 0.3),
+                        color: Colors.grey.withOpacity(0.3),
                         child: Center(
                           child: Icon(
                             _selectedMemoryType == 'video' ? Icons.videocam : Icons.mic,
                             size: 64,
-                            color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                            color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                       ),
@@ -499,9 +366,12 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               label: Text(_selectedMediaFile == null 
                   ? 'Add ${_selectedMemoryType.toUpperCase()}' 
                   : 'Change ${_selectedMemoryType.toUpperCase()}'),
-              style: AppTheme.secondaryButtonStyle.copyWith(
-                backgroundColor: MaterialStateProperty.all(
-                  AppTheme.secondaryBlue.withValues(alpha: 0.8),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.withOpacity(0.2),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -512,32 +382,37 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         // Text input
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 120),
+          height: 120,
           decoration: BoxDecoration(
-            color: AppTheme.pureWhite.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.3),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.lightBlue.withValues(alpha: 0.3),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
               width: 1.5,
             ),
-            boxShadow: AppTheme.subtleShadows,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _textController,
               style: TextStyle(
-                color: AppTheme.pureWhite,
+                color: Colors.white,
                 fontSize: 16,
               ),
-              maxLines: null,
-              expands: true,
+              maxLines: 4,
               decoration: InputDecoration(
                 hintText: _selectedMemoryType == 'text' 
                     ? 'Write your memory...'
                     : 'Add a description...',
                 hintStyle: TextStyle(
-                  color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                  color: Colors.white.withOpacity(0.5),
                   fontSize: 16,
                 ),
                 border: InputBorder.none,
@@ -554,15 +429,21 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
   Widget _buildLocationSection() {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 80),
+      height: 80,
       decoration: BoxDecoration(
-        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
           width: 1.5,
         ),
-        boxShadow: AppTheme.subtleShadows,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -570,7 +451,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
           children: [
             Icon(
               Icons.location_on,
-              color: AppTheme.accentGold,
+              color: Theme.of(context).colorScheme.primary,
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -579,18 +460,18 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Current Location',
                     style: TextStyle(
-                      color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                      color: Colors.white54,
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _currentLocation ?? 'Loading...',
-                    style: TextStyle(
-                      color: AppTheme.pureWhite,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -607,15 +488,21 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
   Widget _buildARSection() {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 120),
+      height: 120,
       decoration: BoxDecoration(
-        color: AppTheme.pureWhite.withValues(alpha: 0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightBlue.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
           width: 1.5,
         ),
-        boxShadow: AppTheme.subtleShadows,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -626,14 +513,14 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               children: [
                 Icon(
                   Icons.view_in_ar,
-                  color: AppTheme.accentGold,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
-                Text(
+                const Text(
                   'AR Placement',
                   style: TextStyle(
-                    color: AppTheme.pureWhite,
+                    color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
@@ -641,25 +528,26 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
+            const Text(
               'Place your memory in the AR world using 3D models',
               style: TextStyle(
-                color: AppTheme.pureWhite.withValues(alpha: 0.7),
+                color: Colors.white70,
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _showARMemoryScreen,
                 icon: const Icon(Icons.view_in_ar),
                 label: const Text('Place in AR'),
-                style: AppTheme.primaryButtonStyle.copyWith(
-                  backgroundColor: MaterialStateProperty.all(
-                    _selected3DModel != null 
-                        ? AppTheme.primaryDark
-                        : AppTheme.subtleGray,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -676,15 +564,22 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: (_isCreatingMemory || _selected3DModel == null) ? null : _createMemory,
-            style: AppTheme.primaryButtonStyle,
+            onPressed: _isCreatingMemory ? null : _createMemory,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
             child: _isCreatingMemory
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.pureWhite),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
                 : const Text(
@@ -701,10 +596,12 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
           width: double.infinity,
           child: OutlinedButton(
             onPressed: () => Navigator.pop(context),
-            style: AppTheme.outlineButtonStyle.copyWith(
-              foregroundColor: MaterialStateProperty.all(AppTheme.pureWhite),
-              side: MaterialStateProperty.all(
-                BorderSide(color: AppTheme.pureWhite.withValues(alpha: 0.3)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white30),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             child: const Text('Cancel'),
@@ -720,7 +617,7 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: AppTheme.primaryDark.withValues(alpha: 0.95),
+          color: Colors.black.withOpacity(0.9),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -734,22 +631,22 @@ class _CreateMemoryScreenState extends State<CreateMemoryScreen> {
               width: 40,
               height: 5,
               decoration: BoxDecoration(
-                color: AppTheme.pureWhite.withValues(alpha: 0.3),
+                color: Colors.white.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppTheme.pureWhite),
-              title: const Text('Camera', style: TextStyle(color: AppTheme.pureWhite)),
+              leading: const Icon(Icons.camera_alt, color: Colors.white),
+              title: const Text('Camera', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _pickMedia(ImageSource.camera);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: AppTheme.pureWhite),
-              title: const Text('Gallery', style: TextStyle(color: AppTheme.pureWhite)),
+              leading: const Icon(Icons.photo_library, color: Colors.white),
+              title: const Text('Gallery', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 _pickMedia(ImageSource.gallery);

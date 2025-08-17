@@ -153,16 +153,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
     
     return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppTheme.pureWhite),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => context.go('/home'),
         ),
         title: FadeTransition(
@@ -170,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           child: const Text(
             'Chats',
             style: TextStyle(
-              color: AppTheme.pureWhite,
+              color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -179,85 +178,70 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           FadeTransition(
             opacity: _fadeAnimation,
             child: IconButton(
-              icon: const Icon(Icons.search, color: AppTheme.pureWhite),
+              icon: const Icon(Icons.search, color: Colors.white),
               onPressed: () => _showSearchDialog(context),
             ),
           ),
           FadeTransition(
             opacity: _fadeAnimation,
             child: IconButton(
-              icon: const Icon(Icons.add, color: AppTheme.pureWhite),
+              icon: const Icon(Icons.add, color: Colors.white),
               onPressed: () => _showNewChatDialog(context),
             ),
           ),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppTheme.primaryGradient,
+          // Tab Bar
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildTabButton(
+                        'Individuals',
+                        0,
+                        Icons.person,
+                        theme.colorScheme.primary,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildTabButton(
+                        'Communities',
+                        1,
+                        Icons.people,
+                        theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Tab Bar
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Container(
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.pureWhite.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.lightBlue.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildTabButton(
-                              'Individual',
-                              Icons.person,
-                              _selectedTabIndex == 0,
-                              () => setState(() => _selectedTabIndex = 0),
-                            ),
-                          ),
-                          Expanded(
-                            child: _buildTabButton(
-                              'Communities',
-                              Icons.people,
-                              _selectedTabIndex == 1,
-                              () => setState(() => _selectedTabIndex = 1),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Tab Content
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: IndexedStack(
-                      index: _selectedTabIndex,
-                      children: [
-                        _buildIndividualChatsTab(),
-                        _buildCommunityChatsTab(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+          // Chat List
+          Expanded(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: _selectedTabIndex == 0
+                    ? _buildIndividualChatsList()
+                    : _buildCommunityChatsList(),
+              ),
             ),
           ),
         ],
@@ -265,502 +249,339 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTabButton(String label, IconData icon, bool isSelected, VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: isSelected 
-                ? AppTheme.accentGold.withValues(alpha: 0.2)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected 
-                    ? AppTheme.accentGold
-                    : AppTheme.pureWhite.withValues(alpha: 0.7),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected 
-                      ? AppTheme.accentGold
-                      : AppTheme.pureWhite.withValues(alpha: 0.7),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildTabButton(String title, int index, IconData icon, Color activeColor) {
+    final isSelected = _selectedTabIndex == index;
+    
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTabIndex = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected 
+            ? activeColor.withOpacity(0.2)
+            : Colors.transparent,
+          borderRadius: BorderRadius.circular(25),
         ),
-      ),
-    );
-  }
-
-  Widget _buildIndividualChatsTab() {
-    if (_individualChats.isEmpty) {
-      return Center(
-        child: Column(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: AppTheme.pureWhite.withValues(alpha: 0.5),
+              icon,
+              color: isSelected ? activeColor : Colors.white.withOpacity(0.7),
+              size: 20,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(width: 8),
             Text(
-              'No individual chats yet',
+              title,
               style: TextStyle(
-                color: AppTheme.pureWhite.withValues(alpha: 0.7),
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Start a conversation with nearby users',
-              style: TextStyle(
-                color: AppTheme.pureWhite.withValues(alpha: 0.5),
+                color: isSelected ? activeColor : Colors.white.withOpacity(0.7),
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 fontSize: 14,
               ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
+  Widget _buildIndividualChatsList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: _individualChats.length,
       itemBuilder: (context, index) {
         final chat = _individualChats[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildIndividualChatCard(chat),
-        );
+        return _buildIndividualChatTile(chat);
       },
     );
   }
 
-  Widget _buildIndividualChatCard(Map<String, dynamic> chat) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.pureWhite.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppTheme.lightBlue.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: AppTheme.subtleShadows,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _openChat(chat),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                // Avatar with online status
-                Stack(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentGold.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.accentGold.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          chat['avatar'] as String,
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                    if (chat['isOnline'] as bool)
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentGold,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppTheme.primaryDark,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                
-                const SizedBox(width: 16),
-                
-                // Chat Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              chat['name'] as String,
-                              style: TextStyle(
-                                color: AppTheme.pureWhite,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (chat['unreadCount'] > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentGold,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                chat['unreadCount'].toString(),
-                                style: TextStyle(
-                                  color: AppTheme.primaryDark,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          if (chat['isTyping'] as bool)
-                            Row(
-                              children: [
-                                Text(
-                                  'Typing...',
-                                  style: TextStyle(
-                                    color: AppTheme.accentGold,
-                                    fontSize: 14,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildTypingIndicator(),
-                              ],
-                            )
-                          else
-                            Expanded(
-                              child: Text(
-                                chat['lastMessage'] as String,
-                                style: TextStyle(
-                                  color: AppTheme.pureWhite.withValues(alpha: 0.7),
-                                  fontSize: 14,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        chat['timestamp'] as String,
-                        style: TextStyle(
-                          color: AppTheme.pureWhite.withValues(alpha: 0.5),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppTheme.pureWhite.withValues(alpha: 0.3),
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: AppTheme.accentGold,
-            shape: BoxShape.circle,
-          ),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 600 + (index * 200)),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: 0.5 + (0.5 * value),
-                child: child,
-              );
-            },
-            child: null,
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildCommunityChatsTab() {
-    if (_communityChats.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
-              color: AppTheme.pureWhite.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No community chats yet',
-              style: TextStyle(
-                color: AppTheme.pureWhite.withValues(alpha: 0.7),
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Join communities to start group conversations',
-              style: TextStyle(
-                color: AppTheme.pureWhite.withValues(alpha: 0.5),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
+  Widget _buildCommunityChatsList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: _communityChats.length,
       itemBuilder: (context, index) {
         final chat = _communityChats[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildCommunityChatCard(chat),
-        );
+        return _buildCommunityChatTile(chat);
       },
     );
   }
 
-  Widget _buildCommunityChatCard(Map<String, dynamic> chat) {
+  Widget _buildIndividualChatTile(Map<String, dynamic> chat) {
+    final theme = Theme.of(context);
+    
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppTheme.pureWhite.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: theme.colorScheme.surface.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.lightBlue.withValues(alpha: 0.3),
-          width: 1.5,
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          width: 1,
         ),
-        boxShadow: AppTheme.subtleShadows,
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _openCommunityChat(chat),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                // Community Avatar
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondaryBlue.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.secondaryBlue.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      chat['avatar'] as String,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Stack(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Center(
+                child: Text(
+                  chat['avatar'],
+                  style: const TextStyle(fontSize: 24),
                 ),
-                
-                const SizedBox(width: 16),
-                
-                // Community Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              chat['name'] as String,
-                              style: TextStyle(
-                                color: AppTheme.pureWhite,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (chat['unreadCount'] > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondaryBlue,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                chat['unreadCount'].toString(),
-                                style: TextStyle(
-                                  color: AppTheme.pureWhite,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        chat['lastMessage'] as String,
-                        style: TextStyle(
-                          color: AppTheme.pureWhite.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            '${chat['memberCount']} members',
-                            style: TextStyle(
-                              color: AppTheme.pureWhite.withValues(alpha: 0.5),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            chat['timestamp'] as String,
-                            style: TextStyle(
-                              color: AppTheme.pureWhite.withValues(alpha: 0.5),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: AppTheme.pureWhite.withValues(alpha: 0.3),
-                  size: 16,
-                ),
-              ],
+              ),
             ),
-          ),
+            if (chat['isOnline'])
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
+                ),
+              ),
+          ],
         ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                chat['name'],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (chat['isTyping'])
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'typing...',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              chat['lastMessage'],
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              chat['timestamp'],
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        trailing: chat['unreadCount'] > 0
+            ? Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  chat['unreadCount'].toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : null,
+        onTap: () => _openChat(chat),
+      ),
+    );
+  }
+
+  Widget _buildCommunityChatTile(Map<String, dynamic> chat) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.secondary.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Stack(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Center(
+                child: Text(
+                  chat['avatar'],
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
+            ),
+            if (chat['isActive'])
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                chat['name'],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondary.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${chat['memberCount']}',
+                style: TextStyle(
+                  color: theme.colorScheme.secondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              chat['lastMessage'],
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              chat['timestamp'],
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        trailing: chat['unreadCount'] > 0
+            ? Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  chat['unreadCount'].toString(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : null,
+        onTap: () => _openChat(chat),
       ),
     );
   }
 
   void _openChat(Map<String, dynamic> chat) {
-    // Navigate to individual chat
-    context.push('/chat/${chat['id']}');
-  }
-
-  void _openCommunityChat(Map<String, dynamic> chat) {
-    // Navigate to community chat
-    context.push('/community/${chat['id']}');
+    // Navigate to individual chat screen
+    context.push('/chat/${chat['id']}', extra: chat);
   }
 
   void _showSearchDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.95),
+        backgroundColor: Colors.black,
         title: const Text(
           'Search Chats',
-          style: TextStyle(color: AppTheme.pureWhite),
+          style: TextStyle(color: Colors.white),
         ),
         content: TextField(
-          style: const TextStyle(color: AppTheme.pureWhite),
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Search by name or message...',
-            hintStyle: TextStyle(color: AppTheme.pureWhite.withValues(alpha: 0.5)),
+            hintText: 'Search by name...',
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppTheme.lightBlue.withValues(alpha: 0.3)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppTheme.lightBlue.withValues(alpha: 0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppTheme.accentGold),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.pureWhite.withValues(alpha: 0.7)),
-            ),
+            child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
-            style: AppTheme.primaryButtonStyle,
             child: const Text('Search'),
           ),
         ],
@@ -772,34 +593,28 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.primaryDark.withValues(alpha: 0.95),
+        backgroundColor: Colors.black,
         title: const Text(
-          'Start New Chat',
-          style: TextStyle(color: AppTheme.pureWhite),
+          'New Chat',
+          style: TextStyle(color: Colors.white),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.person_add, color: AppTheme.accentGold),
-              title: const Text(
-                'Find Nearby Users',
-                style: TextStyle(color: AppTheme.pureWhite),
-              ),
+              leading: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Start Individual Chat', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                context.push('/around');
+                // Navigate to new individual chat
               },
             ),
             ListTile(
-              leading: Icon(Icons.group_add, color: AppTheme.secondaryBlue),
-              title: const Text(
-                'Join Communities',
-                style: TextStyle(color: AppTheme.pureWhite),
-              ),
+              leading: Icon(Icons.people, color: Theme.of(context).colorScheme.secondary),
+              title: const Text('Join Community', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                // Navigate to communities
+                // Navigate to community selection
               },
             ),
           ],
@@ -807,10 +622,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.pureWhite.withValues(alpha: 0.7)),
-            ),
+            child: const Text('Cancel'),
           ),
         ],
       ),
