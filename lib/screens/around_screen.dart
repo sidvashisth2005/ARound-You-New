@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class AroundScreen extends StatefulWidget {
   const AroundScreen({super.key});
@@ -10,11 +11,19 @@ class AroundScreen extends StatefulWidget {
   State<AroundScreen> createState() => _AroundScreenState();
 }
 
-class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderStateMixin {
+class _AroundScreenState extends State<AroundScreen> 
+    with TickerProviderStateMixin {
   late TabController _tabController;
   late AnimationController _radarController;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  
   late Animation<double> _radarAnimation;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  
+  int _selectedTabIndex = 0;
   
   // Mock nearby users data
   final List<Map<String, dynamic>> _nearbyUsers = [
@@ -27,6 +36,7 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       'lastSeen': '2 min ago',
       'interests': ['Photography', 'Coffee', 'Art'],
       'isOnline': true,
+      'location': const LatLng(37.7749, -122.4194),
     },
     {
       'id': 'user2',
@@ -37,6 +47,7 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       'lastSeen': '5 min ago',
       'interests': ['Music', 'Travel', 'Food'],
       'isOnline': true,
+      'location': const LatLng(37.7849, -122.4094),
     },
     {
       'id': 'user3',
@@ -47,6 +58,7 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       'lastSeen': '15 min ago',
       'interests': ['Reading', 'Yoga', 'Nature'],
       'isOnline': false,
+      'location': const LatLng(37.7649, -122.4294),
     },
     {
       'id': 'user4',
@@ -57,6 +69,7 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       'lastSeen': '1 min ago',
       'interests': ['Technology', 'Gaming', 'Fitness'],
       'isOnline': true,
+      'location': const LatLng(37.7549, -122.4394),
     },
     {
       'id': 'user5',
@@ -67,6 +80,7 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       'lastSeen': '25 min ago',
       'interests': ['Cooking', 'Gardening', 'Pets'],
       'isOnline': false,
+      'location': const LatLng(37.7449, -122.4494),
     },
   ];
 
@@ -106,6 +120,15 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       duration: const Duration(seconds: 3),
       vsync: this,
     );
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
     _radarAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -122,19 +145,49 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
       curve: Curves.easeInOut,
     ));
     
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
+    
     _radarController.repeat();
+    _fadeController.forward();
+    _slideController.forward();
+    
+    _tabController.addListener(() {
+      setState(() {
+        _selectedTabIndex = _tabController.index;
+      });
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _radarController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
   void _startChat(String userId) {
-    // Navigate to chat screen or open chat modal
     context.push('/chat?userId=$userId');
+  }
+
+  void _viewProfile(String userId) {
+    // Navigate to user profile
+    context.push('/profile?userId=$userId');
   }
 
   @override
@@ -143,80 +196,109 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
     
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Around You'),
+        title: FadeTransition(
+          opacity: _fadeAnimation,
+          child: const Text(
+            'Around You',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: IconButton(
+              icon: const Icon(Icons.search, color: Colors.white),
+              onPressed: () {},
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {},
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: IconButton(
+              icon: const Icon(Icons.filter_list, color: Colors.white),
+              onPressed: () {},
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
           // Tab Bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(25),
-                color: theme.colorScheme.primary.withOpacity(0.3),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white.withOpacity(0.5),
-              tabs: const [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.map, size: 20),
-                      SizedBox(width: 8),
-                      Text('Map View'),
-                    ],
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat_bubble, size: 20),
-                      SizedBox(width: 8),
-                      Text('Chat'),
-                    ],
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withOpacity(0.5),
+                      width: 1,
+                    ),
                   ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  tabs: const [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map, size: 20),
+                          SizedBox(width: 8),
+                          Text('Map View'),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people, size: 20),
+                          SizedBox(width: 8),
+                          Text('Nearby'),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-          
-          const SizedBox(height: 20),
           
           // Tab Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildMapViewTab(context),
-                _buildChatTab(context),
+                // Map View Tab
+                _buildMapView(),
+                // Nearby Users Tab
+                _buildNearbyUsers(),
               ],
             ),
           ),
@@ -225,408 +307,272 @@ class _AroundScreenState extends State<AroundScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildMapViewTab(BuildContext context) {
+  Widget _buildMapView() {
     final theme = Theme.of(context);
-    
-    return Stack(
-      children: [
-        // Map Background (Placeholder)
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primary.withOpacity(0.2),
-                Colors.black,
-                theme.colorScheme.secondary.withOpacity(0.1),
-              ],
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.map,
-                  color: Colors.white.withOpacity(0.3),
-                  size: 80,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Interactive Map',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'See nearby users and memories',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
-        
-        // Radar Visualization
-        Positioned(
-          top: 50,
-          left: 50,
-          child: AnimatedBuilder(
-            animation: _radarAnimation,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _radarAnimation.value * 2 * 3.14159,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Radar sweep line
-                      Positioned(
-                        top: 60,
-                        left: 60,
-                        child: Container(
-                          width: 60,
-                          height: 2,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                theme.colorScheme.primary.withOpacity(0.8),
-                                theme.colorScheme.primary.withOpacity(0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Google Maps Placeholder
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.blue.withOpacity(0.3),
+                      Colors.green.withOpacity(0.3),
+                      Colors.orange.withOpacity(0.3),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-        
-        // User proximity indicators
-        ..._nearbyUsers.map((user) {
-          final distance = user['distance'] as double;
-          final angle = distance * 2 * 3.14159; // Convert distance to angle
-          final radius = 100.0 + (distance * 50); // Convert distance to radius
-          
-          return Positioned(
-            top: 110 + (radius * 0.5 * (1 - distance)),
-            left: 110 + (radius * 0.5 * distance),
-            child: AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _pulseAnimation.value,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: user['isOnline'] 
-                          ? theme.colorScheme.primary 
-                          : Colors.grey.withOpacity(0.5),
-                      border: Border.all(
-                        color: Colors.white,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (user['isOnline'] 
-                              ? theme.colorScheme.primary 
-                              : Colors.grey).withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        user['avatar'],
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        }).toList(),
-        
-        // Nearby users list overlay
-        Positioned(
-          bottom: 20,
-          left: 20,
-          right: 20,
-          child: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.colorScheme.primary.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(16),
-              itemCount: _nearbyUsers.take(5).length,
-              itemBuilder: (context, index) {
-                final user = _nearbyUsers[index];
-                return Container(
-                  width: 80,
-                  margin: const EdgeInsets.only(right: 12),
+                child: Center(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: user['isOnline'] 
-                              ? theme.colorScheme.primary.withOpacity(0.2)
-                              : Colors.grey.withOpacity(0.2),
-                          border: Border.all(
-                            color: user['isOnline'] 
-                                ? theme.colorScheme.primary
-                                : Colors.grey,
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            user['avatar'],
-                            style: const TextStyle(fontSize: 20),
-                          ),
+                      Icon(
+                        Icons.map,
+                        size: 80,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Interactive Map',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        user['name'],
+                        'See people and memories around you',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${(user['distance'] * 1000).toInt()}m',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 14,
                         ),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChatTab(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Column(
-      children: [
-        // Online users count
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.green,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '${_nearbyUsers.where((user) => user['isOnline']).length} people nearby',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              
+              // Radar Animation
+              Positioned(
+                top: 20,
+                right: 20,
+                child: ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withOpacity(0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.radar,
+                        color: theme.colorScheme.primary,
+                        size: 24,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
-              TextButton(
-                onPressed: () {},
-                child: Text(
-                  'View All',
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w500,
+              
+              // User Count
+              Positioned(
+                bottom: 20,
+                left: 20,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: theme.colorScheme.secondary.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.people,
+                        color: theme.colorScheme.secondary,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_nearbyUsers.length} people nearby',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
           ),
         ),
-        
-        const SizedBox(height: 16),
-        
-        // Recent conversations
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _nearbyUsers.where((user) => user['isOnline']).length,
-            itemBuilder: (context, index) {
-              final user = _nearbyUsers.where((user) => user['isOnline']).toList()[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: GestureDetector(
-                  onTap: () => _startChat(user['id']),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // User avatar
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: theme.colorScheme.primary.withOpacity(0.2),
-                            border: Border.all(
-                              color: theme.colorScheme.primary.withOpacity(0.5),
-                              width: 2,
+      ),
+    );
+  }
+
+  Widget _buildNearbyUsers() {
+    final theme = Theme.of(context);
+    return FadeTransition(
+      opacity: _fadeAnimation,
+                      child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _nearbyUsers.length,
+                  itemBuilder: (context, index) {
+                    final user = _nearbyUsers[index];
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(0, 0.3 + (index * 0.1)),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: _slideController,
+                        curve: Curves.easeOutCubic,
+                      )),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: AppTheme.elegantCardDecoration,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.primaryGradient,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: AppTheme.cardShadows,
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              user['avatar'],
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 16),
-                        
-                        // User info
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    user['name'],
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ],
+                            child: Center(
+                              child: Text(
+                                user['avatar'],
+                                style: const TextStyle(fontSize: 24),
                               ),
-                              const SizedBox(height: 4),
+                            ),
+                          ),
+                          title: Row(
+                            children: [
                               Text(
-                                '${(user['distance'] * 1000).toInt()}m away',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 14,
+                                user['name'],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: user['isOnline'] 
+                                    ? Colors.green 
+                                    : Colors.grey,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               const SizedBox(height: 4),
+                              Text(
+                                '${user['distance']} km away • ${user['lastSeen']}',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
                               Wrap(
-                                spacing: 4,
-                                children: (user['interests'] as List).take(2).map((interest) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      interest,
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                                spacing: 8,
+                                children: (user['interests'] as List<String>)
+                                    .take(3)
+                                    .map((interest) => Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.primary.withOpacity(0.25),
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: theme.colorScheme.primary.withOpacity(0.4),
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            interest,
+                                            style: TextStyle(
+                                              color: theme.colorScheme.primary,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () => _viewProfile(user['id']),
+                                icon: Icon(
+                                  Icons.person_outline,
+                                  color: Colors.white.withOpacity(0.8),
+                                  size: 24,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => _startChat(user['id']),
+                                icon: Icon(
+                                  Icons.chat_bubble_outline,
+                                  color: theme.colorScheme.primary,
+                                  size: 24,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        
-                        // Chat button
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            Icons.chat_bubble_outline,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }

@@ -330,28 +330,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive 
+            ? theme.colorScheme.primary.withOpacity(0.15)
+            : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
             color: isActive 
-              ? theme.colorScheme.primary 
-              : Colors.white.withOpacity(0.6),
-            size: 24,
+              ? theme.colorScheme.primary.withOpacity(0.3)
+              : Colors.transparent,
+            width: 1,
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive 
-                ? theme.colorScheme.primary 
-                : Colors.white.withOpacity(0.6),
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: isActive ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: Icon(
+                icon,
+                color: isActive 
+                  ? theme.colorScheme.primary 
+                  : Colors.white.withOpacity(0.7),
+                size: 22,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                color: isActive 
+                  ? theme.colorScheme.primary 
+                  : Colors.white.withOpacity(0.7),
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                letterSpacing: 0.2,
+              ),
+              child: Text(label),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -416,47 +440,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.9),
+          color: Colors.black.withOpacity(0.95),
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.primary.withOpacity(0.3),
-              width: 1,
+              color: Colors.white.withOpacity(0.1),
+              width: 0.5,
             ),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(
                   context,
-                  Icons.home,
+                  Icons.home_rounded,
                   'Home',
                   true,
                   () => context.go('/home'),
                 ),
                 _buildNavItem(
                   context,
-                  Icons.explore,
+                  Icons.explore_rounded,
                   'Around',
                   false,
                   () => context.go('/around'),
                 ),
                 _buildNavItem(
                   context,
-                  Icons.people,
+                  Icons.people_rounded,
                   'Community',
                   false,
                   () => context.go('/community'),
                 ),
                 _buildNavItem(
                   context,
-                  Icons.emoji_events,
+                  Icons.emoji_events_rounded,
                   'Achievements',
                   false,
                   () => context.go('/achievements'),
+                ),
+                _buildNavItem(
+                  context,
+                  Icons.person_rounded,
+                  'Profile',
+                  false,
+                  () => context.go('/profile'),
                 ),
               ],
             ),

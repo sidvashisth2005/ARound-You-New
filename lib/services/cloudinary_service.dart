@@ -8,8 +8,8 @@ class CloudinaryService {
   CloudinaryService._internal();
 
   // Replace these with your actual Cloudinary credentials
-  static const String _cloudName = 'your_cloud_name';
-  static const String _uploadPreset = 'your_upload_preset';
+  static const String _cloudName = 'decbyhxrz';
+  static const String _uploadPreset = 'around_you_uploads';
   
   late CloudinaryPublic _cloudinary;
 

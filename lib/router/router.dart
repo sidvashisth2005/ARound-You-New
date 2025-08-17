@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 
 // Import all your screen files here
 import 'package:around_you/screens/onboarding_screen.dart';
@@ -14,6 +15,7 @@ import 'package:around_you/screens/social_discovery_screen.dart';
 import 'package:around_you/screens/notifications_screen.dart';
 import 'package:around_you/screens/chat_screen.dart';
 import 'package:around_you/screens/help_screen.dart';
+import 'package:around_you/utils/page_transitions.dart';
 
 // Simple router without authentication for now
 final router = GoRouter(
