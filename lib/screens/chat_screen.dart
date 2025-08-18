@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:around_you/services/firebase_service.dart';
+import 'package:around_you/services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -20,7 +20,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<Offset> _slideAnimation;
   
   int _selectedTabIndex = 0;
-  final FirebaseService _firebaseService = FirebaseService();
+  final ChatService _chatService = ChatService();
   late Stream<QuerySnapshot> _chatsStream;
   late Stream<QuerySnapshot> _communitiesStream;
   
@@ -28,14 +28,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _initializeAnimations();
-    _chatsStream = FirebaseFirestore.instance
-        .collection('chats')
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots();
-    _communitiesStream = FirebaseFirestore.instance
-        .collection('communities')
-        .orderBy('updatedAt', descending: true)
-        .snapshots();
+    _chatsStream = _chatService.getUserChats();
+    _communitiesStream = _chatService.getCommunities();
   }
 
   void _initializeAnimations() {

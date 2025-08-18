@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:around_you/theme/theme.dart';
-import 'package:around_you/extensions/color_extensions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:around_you/services/achievement_service.dart';
 import 'package:around_you/services/auth_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
@@ -53,7 +51,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     },
   ];
 
-  late Stream<QuerySnapshot> _achievementsStream;
+  final AchievementService _achievementService = AchievementService();
   List<Map<String, dynamic>> _achievements = [];
   
   @override
@@ -106,29 +104,15 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     final auth = AuthService();
     final userId = await auth.getUserId();
     if (userId == null) return;
-    _achievementsStream = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('achievements')
-        .snapshots();
-    _achievementsStream.listen((snapshot) {
-      final items = snapshot.docs.map((d) {
-        final data = d.data() as Map<String, dynamic>;
-        return {
-          'id': d.id,
-          'title': data['title'] ?? 'Achievement',
-          'description': data['description'] ?? '',
-          'icon': Icons.emoji_events_rounded,
-          'category': data['category'] ?? 'All',
-          'unlocked': data['unlocked'] ?? false,
-          'progress': (data['progress'] ?? 0).toDouble(),
-          'xpReward': data['xpReward'] ?? 0,
-          'unlockDate': data['unlockDate'],
-          'rarity': data['rarity'] ?? 'Common',
-        };
-      }).toList();
-      if (mounted) setState(() => _achievements = items);
-    });
+    
+    // Initialize achievements if needed
+    await _achievementService.initializeUserAchievements(userId);
+    
+    // Load achievements
+    final achievements = await _achievementService.getUserAchievements(userId);
+    if (mounted) {
+      setState(() => _achievements = achievements);
+    }
   }
 
   @override
@@ -382,7 +366,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
   Widget _buildAchievementCard(BuildContext context, Map<String, dynamic> achievement) {
     final theme = Theme.of(context);
     final isUnlocked = achievement['unlocked'] as bool;
-    final progress = achievement['progress'] as double;
+    final progress = _achievementService.getAchievementProgress(achievement);
     final rarity = achievement['rarity'] as String;
     final xpReward = achievement['xpReward'] as int;
     
@@ -450,10 +434,12 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                         width: 2,
                       ),
                     ),
-                    child: Icon(
-                      achievement['icon'],
-                      color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.5),
-                      size: 30,
+                    child: Text(
+                      achievement['icon'] ?? '🏆',
+                      style: TextStyle(
+                        fontSize: 30,
+                        color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.5),
+                      ),
                     ),
                   ),
                   
@@ -491,25 +477,29 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      achievement['title'],
-                      style: TextStyle(
-                        color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        achievement['title'],
+                        style: TextStyle(
+                          color: isUnlocked ? Colors.white : Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      achievement['description'],
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 11,
+                    Flexible(
+                      child: Text(
+                        achievement['description'],
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const Spacer(),
                     Row(

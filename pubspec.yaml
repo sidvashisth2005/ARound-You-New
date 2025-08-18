@@ -61,9 +61,7 @@ flutter:
     - assets/models/video_frame.glb
     - assets/models/text_display.glb
     - assets/models/audio_player.glb
-    - Animation while launching.json
-    - Animation after creating memory.json
-    - Intermidiate Loading.json
+    - assets/animations/
 
   # fonts:
   #   - family: Schyler

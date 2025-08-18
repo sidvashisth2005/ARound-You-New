@@ -10,6 +10,8 @@ import 'package:around_you/screens/home_screen.dart';
 import 'package:around_you/screens/around_screen.dart';
 import 'package:around_you/screens/ar_memory_screen.dart';
 import 'package:around_you/screens/create_memory_screen.dart';
+import 'package:around_you/screens/create_memory_details_screen.dart';
+import 'package:around_you/screens/model_selection_screen.dart';
 import 'package:around_you/screens/memory_details_screen.dart';
 import 'package:around_you/screens/achievements_screen.dart';
 import 'package:around_you/screens/profile_screen.dart';
@@ -62,6 +64,29 @@ final router = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         return CreateMemoryScreen(
           memoryType: extra != null ? extra['memoryType'] as String? : null,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/model-selection',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ModelSelectionScreen(
+          memoryType: extra != null ? extra['memoryType'] as String : 'text',
+          memoryText: extra != null ? extra['memoryText'] as String? : null,
+          mediaFile: extra != null ? extra['mediaFile'] as String? : null,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/create-memory-details',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CreateMemoryDetailsScreen(
+          memoryType: extra != null ? extra['memoryType'] as String : 'text',
+          memoryText: extra != null ? extra['memoryText'] as String? : null,
+          mediaFile: extra != null ? extra['mediaFile'] as String? : null,
+          modelId: extra != null ? extra['modelId'] as String : 'text',
         );
       },
     ),

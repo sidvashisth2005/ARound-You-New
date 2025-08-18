@@ -7,6 +7,7 @@ import 'package:around_you/services/auth_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
 import 'package:around_you/widgets/wormhole_overlay.dart';
+import 'package:around_you/services/animation_service.dart';
 
 class ARMemoryScreen extends StatefulWidget {
   final String? memoryType;
@@ -463,12 +464,65 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
 
           // Wormhole overlay at center
           Center(
-            child: WormholeOverlay(
-              isVisible: _showWormhole || !_arService.isCameraReady,
-              animationAssetPath: 'Animation while launching.json',
-              size: 240,
-            ),
+                            child: WormholeOverlay(
+                  isVisible: _showWormhole || !_arService.isCameraReady,
+                  animationAssetPath: AnimationService.wormhole,
+                  size: 240,
+                ),
           ),
+          
+          // 3D Model Preview above wormhole
+          if (_selectedModelId.isNotEmpty && !_showWormhole)
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.3,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getModelIcon(_selectedModelId),
+                        size: 48,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Selected: ${_selectedModelId.toUpperCase()} Model',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (widget.memoryText != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.memoryText!,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
           
           // Bottom Controls
           Positioned(

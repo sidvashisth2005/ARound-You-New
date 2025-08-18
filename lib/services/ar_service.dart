@@ -18,6 +18,7 @@ class ARService {
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
   bool _isInitialized = false;
+  bool _isARMode = false;
 
   // Available 3D models mapped to memory types
   final Map<String, AR3DModel> _availableModels = {
@@ -28,6 +29,8 @@ class ARService {
       modelPath: 'assets/models/photo_frame.glb',
       thumbnailPath: 'assets/thumbnails/photo_frame.png',
       category: 'Media',
+      scale: 1.0,
+      rotation: 0.0,
     ),
     'video': const AR3DModel(
       id: 'video',
@@ -36,6 +39,8 @@ class ARService {
       modelPath: 'assets/models/video_frame.glb',
       thumbnailPath: 'assets/thumbnails/video_frame.png',
       category: 'Media',
+      scale: 1.0,
+      rotation: 0.0,
     ),
     'text': const AR3DModel(
       id: 'text',
@@ -44,6 +49,8 @@ class ARService {
       modelPath: 'assets/models/text_display.glb',
       thumbnailPath: 'assets/thumbnails/text_display.png',
       category: 'Text',
+      scale: 1.0,
+      rotation: 0.0,
     ),
     'audio': const AR3DModel(
       id: 'audio',
@@ -52,6 +59,8 @@ class ARService {
       modelPath: 'assets/models/audio_player.glb',
       thumbnailPath: 'assets/thumbnails/audio_player.png',
       category: 'Audio',
+      scale: 1.0,
+      rotation: 0.0,
     ),
   };
 
@@ -97,6 +106,32 @@ class ARService {
     }
   }
 
+  /// Enable AR mode for 3D model placement
+  Future<bool> enableARMode() async {
+    try {
+      if (!isCameraReady) {
+        final initialized = await initializeCamera();
+        if (!initialized) return false;
+      }
+      
+      _isARMode = true;
+      debugPrint('✅ AR mode enabled');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error enabling AR mode: $e');
+      return false;
+    }
+  }
+
+  /// Disable AR mode
+  void disableARMode() {
+    _isARMode = false;
+    debugPrint('✅ AR mode disabled');
+  }
+
+  /// Check if AR mode is active
+  bool get isARModeActive => _isARMode;
+
   /// Get camera controller safely
   CameraController? get cameraController {
     if (isCameraReady) {
@@ -130,6 +165,24 @@ class ARService {
     return CameraPreview(_cameraController!);
   }
 
+  /// Get AR overlay widget with 3D model placement
+  Widget? getAROverlay({
+    required String modelId,
+    required Function(LatLng) onModelPlaced,
+    required Function() onPlacementCancelled,
+  }) {
+    if (!isARModeActive) {
+      debugPrint('❌ AR mode not active');
+      return null;
+    }
+
+    return ARPlacementOverlay(
+      modelId: modelId,
+      onModelPlaced: onModelPlaced,
+      onPlacementCancelled: onPlacementCancelled,
+    );
+  }
+
   /// Dispose camera resources
   Future<void> disposeCamera() async {
     try {
@@ -140,6 +193,7 @@ class ARService {
         _cameraController = null;
       }
       _isInitialized = false;
+      _isARMode = false;
       _cameras = null;
       debugPrint('✅ Camera disposed successfully');
     } catch (e) {
@@ -246,6 +300,15 @@ class ARService {
         'isActive': true,
         'viewCount': 0,
         'likeCount': 0,
+        'placementData': {
+          'scale': model.scale,
+          'rotation': model.rotation,
+          'position': {
+            'x': 0.0,
+            'y': 0.0,
+            'z': 0.0,
+          },
+        },
       };
 
       // Store in Firestore
@@ -299,24 +362,7 @@ class ARService {
         }
       }
 
-      // Sort by distance
-      memories.sort((a, b) {
-        final distanceA = Geolocator.distanceBetween(
-          center.latitude,
-          center.longitude,
-          a.coordinates.latitude,
-          a.coordinates.longitude,
-        );
-        final distanceB = Geolocator.distanceBetween(
-          center.latitude,
-          center.longitude,
-          b.coordinates.latitude,
-          b.coordinates.longitude,
-        );
-        return distanceA.compareTo(distanceB);
-      });
-
-      debugPrint('✅ Found ${memories.length} AR memories nearby');
+      debugPrint('✅ Found ${memories.length} nearby AR memories');
       return memories;
     } catch (e) {
       debugPrint('❌ Error fetching nearby AR memories: $e');
@@ -324,133 +370,13 @@ class ARService {
     }
   }
 
-  /// Get AR memories by user
-  Future<List<ARMemory>> getUserARMemories(String userId) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('ar_memories')
-          .where('userId', isEqualTo: userId)
-          .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .get();
-
-      return querySnapshot.docs.map((doc) => ARMemory.fromFirestore(doc)).toList();
-    } catch (e) {
-      debugPrint('❌ Error fetching user AR memories: $e');
-      return [];
-    }
-  }
-
-  /// Update AR memory
-  Future<bool> updateARMemory({
-    required String memoryId,
-    String? title,
-    String? description,
-    String? mediaUrl,
-    String? textContent,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final updateData = <String, dynamic>{
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (title != null) updateData['title'] = title;
-      if (description != null) updateData['description'] = description;
-      if (mediaUrl != null) updateData['mediaUrl'] = mediaUrl;
-      if (textContent != null) updateData['textContent'] = textContent;
-      if (additionalData != null) updateData['additionalData'] = additionalData;
-
-      await _firestore.collection('ar_memories').doc(memoryId).update(updateData);
-      debugPrint('✅ AR memory updated successfully');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error updating AR memory: $e');
-      return false;
-    }
-  }
-
-  /// Delete AR memory
-  Future<bool> deleteARMemory(String memoryId) async {
-    try {
-      await _firestore.collection('ar_memories').doc(memoryId).update({
-        'isActive': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      debugPrint('✅ AR memory deleted successfully');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error deleting AR memory: $e');
-      return false;
-    }
-  }
-
-  /// Increment view count
-  Future<void> incrementViewCount(String memoryId) async {
-    try {
-      await _firestore.collection('ar_memories').doc(memoryId).update({
-        'viewCount': FieldValue.increment(1),
-      });
-    } catch (e) {
-      debugPrint('❌ Error incrementing view count: $e');
-    }
-  }
-
-  /// Like/unlike AR memory
-  Future<bool> toggleLike(String memoryId, String userId) async {
-    try {
-      final docRef = _firestore.collection('ar_memories').doc(memoryId);
-      final likeRef = docRef.collection('likes').doc(userId);
-
-      final likeDoc = await likeRef.get();
-      if (likeDoc.exists) {
-        // Unlike
-        await likeRef.delete();
-        await docRef.update({
-          'likeCount': FieldValue.increment(-1),
-        });
-        debugPrint('✅ AR memory unliked');
-        return false;
-      } else {
-        // Like
-        await likeRef.set({
-          'userId': userId,
-          'likedAt': FieldValue.serverTimestamp(),
-        });
-        await docRef.update({
-          'likeCount': FieldValue.increment(1),
-        });
-        debugPrint('✅ AR memory liked');
-        return true;
-      }
-    } catch (e) {
-      debugPrint('❌ Error toggling like: $e');
-      return false;
-    }
-  }
-
-  /// Check if user liked a memory
-  Future<bool> isLikedByUser(String memoryId, String userId) async {
-    try {
-      final likeDoc = await _firestore
-          .collection('ar_memories')
-          .doc(memoryId)
-          .collection('likes')
-          .doc(userId)
-          .get();
-      return likeDoc.exists;
-    } catch (e) {
-      debugPrint('❌ Error checking like status: $e');
-      return false;
-    }
-  }
-
-  /// Calculate bounding box for efficient querying
+  /// Calculate bounding box for efficient geospatial queries
   Map<String, double> _calculateBoundingBox(LatLng center, double radiusInKm) {
-    const double earthRadius = 6371; // Earth's radius in kilometers
-    final double latDelta = radiusInKm / earthRadius * (180 / math.pi);
-    final double lonDelta = radiusInKm / earthRadius * (180 / math.pi) / math.cos(center.latitude * math.pi / 180);
-
+    const double earthRadius = 6371.0; // Earth's radius in kilometers
+    
+    final latDelta = radiusInKm / earthRadius * (180.0 / math.pi);
+    final lonDelta = radiusInKm / (earthRadius * math.cos(center.latitude * math.pi / 180.0)) * (180.0 / math.pi);
+    
     return {
       'north': center.latitude + latDelta,
       'south': center.latitude - latDelta,
@@ -459,100 +385,23 @@ class ARService {
     };
   }
 
-  /// Get real-time updates of nearby AR memories
-  Stream<List<ARMemory>> getNearbyARMemoriesStream({
-    required LatLng center,
-    double radiusInKm = 5.0,
-  }) {
-    final bounds = _calculateBoundingBox(center, radiusInKm);
-
-    return _firestore
-        .collection('ar_memories')
-        .where('isActive', isEqualTo: true)
-        .where('coordinates', isGreaterThanOrEqualTo: GeoPoint(bounds['south']!, bounds['west']!))
-        .where('coordinates', isLessThanOrEqualTo: GeoPoint(bounds['north']!, bounds['east']!))
-        .orderBy('coordinates')
-        .snapshots()
-        .map((snapshot) {
-      final memories = <ARMemory>[];
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final coordinates = data['coordinates'] as GeoPoint;
-        final memoryLocation = LatLng(coordinates.latitude, coordinates.longitude);
-        
-        final distance = Geolocator.distanceBetween(
-          center.latitude,
-          center.longitude,
-          coordinates.latitude,
-          coordinates.longitude,
-        ) / 1000;
-
-        if (distance <= radiusInKm) {
-          memories.add(ARMemory.fromFirestore(doc));
-        }
-      }
-
-      memories.sort((a, b) {
-        final distanceA = Geolocator.distanceBetween(
-          center.latitude,
-          center.longitude,
-          a.coordinates.latitude,
-          a.coordinates.longitude,
-        );
-        final distanceB = Geolocator.distanceBetween(
-          center.latitude,
-          center.longitude,
-          b.coordinates.latitude,
-          b.coordinates.longitude,
-        );
-        return distanceA.compareTo(distanceB);
-      });
-
-      return memories;
-    });
-  }
-
-  /// Handle camera errors and attempt recovery
-  Future<bool> handleCameraError() async {
-    try {
-      debugPrint('🔄 Attempting to recover from camera error...');
-      await disposeCamera();
-      await Future.delayed(const Duration(seconds: 1)); // Wait before retry
-      return await initializeCamera();
-    } catch (e) {
-      debugPrint('❌ Failed to recover from camera error: $e');
-      return false;
-    }
-  }
-
-  /// Handle camera errors with multiple recovery attempts
-  Future<bool> handleCameraErrorWithRetry({int maxRetries = 3}) async {
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        debugPrint('🔄 Camera recovery attempt $attempt/$maxRetries...');
-        await disposeCamera();
-        await Future.delayed(Duration(seconds: attempt)); // Progressive delay
-        
-        if (await initializeCamera()) {
-          debugPrint('✅ Camera recovered successfully on attempt $attempt');
-          return true;
-        }
-      } catch (e) {
-        debugPrint('❌ Camera recovery attempt $attempt failed: $e');
-      }
-    }
-    
-    debugPrint('❌ Failed to recover camera after $maxRetries attempts');
-    return false;
-  }
-
-  /// Check camera health and reinitialize if needed
+  /// Ensure camera health and reinitialize if needed
   Future<bool> ensureCameraHealth() async {
-    if (!isCameraReady) {
-      debugPrint('🔄 Camera not healthy, reinitializing...');
-      return await initializeCamera();
-    }
-    return true;
+    if (isCameraReady) return true;
+    
+    debugPrint('⚠️ Camera health check failed, reinitializing...');
+    return await initializeCamera();
+  }
+
+  /// Get camera status information
+  Map<String, dynamic> getCameraStatus() {
+    return {
+      'isInitialized': _isInitialized,
+      'isCameraReady': isCameraReady,
+      'isARMode': _isARMode,
+      'cameraCount': _cameras?.length ?? 0,
+      'currentResolution': 'High',
+    };
   }
 
   /// Handle app lifecycle changes
@@ -619,17 +468,6 @@ class ARService {
     return await initializeCamera();
   }
 
-  /// Get detailed camera status for debugging
-  Map<String, dynamic> getCameraStatus() {
-    return {
-      'isInitialized': _isInitialized,
-      'hasCameraController': _cameraController != null,
-      'isCameraReady': isCameraReady,
-      'cameraCount': _cameras?.length ?? 0,
-      'cameraState': _cameraController?.value.toString() ?? 'null',
-    };
-  }
-
   /// Log camera status for debugging
   void logCameraStatus() {
     final status = getCameraStatus();
@@ -675,7 +513,141 @@ class ARService {
   }
 }
 
-/// AR 3D Model class
+/// AR Placement Overlay Widget
+class ARPlacementOverlay extends StatefulWidget {
+  final String modelId;
+  final Function(LatLng) onModelPlaced;
+  final Function() onPlacementCancelled;
+
+  const ARPlacementOverlay({
+    super.key,
+    required this.modelId,
+    required this.onModelPlaced,
+    required this.onPlacementCancelled,
+  });
+
+  @override
+  State<ARPlacementOverlay> createState() => _ARPlacementOverlayState();
+}
+
+class _ARPlacementOverlayState extends State<ARPlacementOverlay> {
+  bool _isPlacing = false;
+  Offset _placementPosition = Offset.zero;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // AR placement guide
+        Positioned.fill(
+          child: GestureDetector(
+            onTapDown: (details) {
+              setState(() {
+                _placementPosition = details.localPosition;
+                _isPlacing = true;
+              });
+            },
+            onTapUp: (details) {
+              if (_isPlacing) {
+                // Convert screen position to world coordinates
+                final worldPosition = _screenToWorldCoordinates(_placementPosition);
+                widget.onModelPlaced(worldPosition);
+              }
+            },
+            child: Container(
+              color: Colors.transparent,
+              child: CustomPaint(
+                painter: ARPlacementPainter(
+                  placementPosition: _placementPosition,
+                  isPlacing: _isPlacing,
+                ),
+              ),
+            ),
+          ),
+        ),
+        
+        // Placement controls
+        Positioned(
+          bottom: 20,
+          left: 20,
+          right: 20,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: widget.onPlacementCancelled,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.withOpacity(0.8),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: _isPlacing ? () {
+                  final worldPosition = _screenToWorldCoordinates(_placementPosition);
+                  widget.onModelPlaced(worldPosition);
+                } : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.withOpacity(0.8),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Place Model'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  LatLng _screenToWorldCoordinates(Offset screenPosition) {
+    // This is a simplified conversion - in a real AR app, you'd use ARCore/ARKit
+    // For now, we'll return a default position
+    return const LatLng(0.0, 0.0);
+  }
+}
+
+/// Custom painter for AR placement visualization
+class ARPlacementPainter extends CustomPainter {
+  final Offset placementPosition;
+  final bool isPlacing;
+
+  ARPlacementPainter({
+    required this.placementPosition,
+    required this.isPlacing,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!isPlacing) return;
+
+    final paint = Paint()
+      ..color = Colors.green
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    // Draw placement indicator
+    canvas.drawCircle(placementPosition, 30, paint);
+    canvas.drawCircle(placementPosition, 35, paint);
+    
+    // Draw crosshair
+    canvas.drawLine(
+      Offset(placementPosition.dx - 40, placementPosition.dy),
+      Offset(placementPosition.dx + 40, placementPosition.dy),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(placementPosition.dx, placementPosition.dy - 40),
+      Offset(placementPosition.dx, placementPosition.dy + 40),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+/// Enhanced AR 3D Model class
 class AR3DModel {
   final String id;
   final String name;
@@ -683,6 +655,8 @@ class AR3DModel {
   final String modelPath;
   final String thumbnailPath;
   final String category;
+  final double scale;
+  final double rotation;
 
   const AR3DModel({
     required this.id,
@@ -691,10 +665,38 @@ class AR3DModel {
     required this.modelPath,
     required this.thumbnailPath,
     required this.category,
+    this.scale = 1.0,
+    this.rotation = 0.0,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'modelPath': modelPath,
+      'thumbnailPath': thumbnailPath,
+      'category': category,
+      'scale': scale,
+      'rotation': rotation,
+    };
+  }
+
+  factory AR3DModel.fromMap(Map<String, dynamic> map) {
+    return AR3DModel(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      modelPath: map['modelPath'] ?? '',
+      thumbnailPath: map['thumbnailPath'] ?? '',
+      category: map['category'] ?? '',
+      scale: (map['scale'] ?? 1.0).toDouble(),
+      rotation: (map['rotation'] ?? 0.0).toDouble(),
+    );
+  }
 }
 
-/// AR Memory class representing a memory placed in AR
+/// Enhanced AR Memory class
 class ARMemory {
   final String id;
   final String memoryType;
@@ -713,6 +715,7 @@ class ARMemory {
   final bool isActive;
   final int viewCount;
   final int likeCount;
+  final Map<String, dynamic> placementData;
 
   ARMemory({
     required this.id,
@@ -732,6 +735,7 @@ class ARMemory {
     required this.isActive,
     required this.viewCount,
     required this.likeCount,
+    required this.placementData,
   });
 
   factory ARMemory.fromFirestore(DocumentSnapshot doc) {
@@ -750,21 +754,23 @@ class ARMemory {
       modelPath: data['modelPath'] ?? '',
       mediaUrl: data['mediaUrl'],
       textContent: data['textContent'],
-      additionalData: Map<String, dynamic>.from(data['additionalData'] ?? {}),
+      additionalData: data['additionalData'] ?? {},
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      isActive: data['isActive'] ?? true,
+      isActive: data['isActive'] ?? false,
       viewCount: data['viewCount'] ?? 0,
       likeCount: data['likeCount'] ?? 0,
+      placementData: data['placementData'] ?? {},
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'memoryType': memoryType,
       'title': title,
       'description': description,
-      'coordinates': GeoPoint(coordinates.latitude, coordinates.longitude),
+      'coordinates': coordinates,
       'userId': userId,
       'userName': userName,
       'modelId': modelId,
@@ -772,11 +778,12 @@ class ARMemory {
       'mediaUrl': mediaUrl,
       'textContent': textContent,
       'additionalData': additionalData,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
       'isActive': isActive,
       'viewCount': viewCount,
       'likeCount': likeCount,
+      'placementData': placementData,
     };
   }
 }

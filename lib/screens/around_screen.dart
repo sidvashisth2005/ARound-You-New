@@ -520,12 +520,14 @@ class _AroundScreenState extends State<AroundScreen>
                           ),
                           title: Row(
                             children: [
-                              Text(
-                                user['name'],
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                              Expanded(
+                                child: Text(
+                                  user['name'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -547,8 +549,8 @@ class _AroundScreenState extends State<AroundScreen>
                               const SizedBox(height: 4),
                               Text(
                                 '${user['distance']} km away • ${user['lastSeen']}',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                                style: const TextStyle(
+                                  color: Colors.white70,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -590,9 +592,9 @@ class _AroundScreenState extends State<AroundScreen>
                             children: [
                               IconButton(
                                 onPressed: () => _viewProfile(user['id']),
-                                icon: Icon(
+                                icon: const Icon(
                                   Icons.person_outline,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                                  color: Colors.white70,
                                   size: 24,
                                 ),
                               ),
