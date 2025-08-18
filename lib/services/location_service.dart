@@ -2,6 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'permission_service.dart';
+import 'package:around_you/services/firebase_service.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -13,70 +14,7 @@ class LocationService {
   bool _isLocationEnabled = false;
   bool _isInitialized = false;
   Stream<Position>? _locationStream;
-
-  // Mock nearby users data - in real app this would come from Firebase
-  final List<Map<String, dynamic>> _mockNearbyUsers = [
-    {
-      'id': 'user1',
-      'name': 'Sarah Chen',
-      'avatar': '👩‍💼',
-      'distance': 0.2,
-      'status': 'online',
-      'lastSeen': '2 min ago',
-      'interests': ['Photography', 'Coffee', 'Art'],
-      'isOnline': true,
-      'location': const LatLng(37.7749, -122.4194),
-      'lastUpdated': DateTime.now().subtract(const Duration(minutes: 2)),
-    },
-    {
-      'id': 'user2',
-      'name': 'Mike Rodriguez',
-      'avatar': '👨‍🎨',
-      'distance': 0.5,
-      'status': 'online',
-      'lastSeen': '5 min ago',
-      'interests': ['Music', 'Travel', 'Food'],
-      'isOnline': true,
-      'location': const LatLng(37.7849, -122.4094),
-      'lastUpdated': DateTime.now().subtract(const Duration(minutes: 5)),
-    },
-    {
-      'id': 'user3',
-      'name': 'Emma Thompson',
-      'avatar': '👩‍🎓',
-      'distance': 0.8,
-      'status': 'away',
-      'lastSeen': '15 min ago',
-      'interests': ['Reading', 'Yoga', 'Nature'],
-      'isOnline': false,
-      'location': const LatLng(37.7649, -122.4294),
-      'lastUpdated': DateTime.now().subtract(const Duration(minutes: 15)),
-    },
-    {
-      'id': 'user4',
-      'name': 'Alex Kim',
-      'avatar': '👨‍💻',
-      'distance': 1.2,
-      'status': 'online',
-      'lastSeen': '1 min ago',
-      'interests': ['Technology', 'Gaming', 'Fitness'],
-      'isOnline': true,
-      'location': const LatLng(37.7549, -122.4394),
-      'lastUpdated': DateTime.now().subtract(const Duration(minutes: 1)),
-    },
-    {
-      'id': 'user5',
-      'name': 'Lisa Park',
-      'avatar': '👩‍🍳',
-      'distance': 1.5,
-      'status': 'away',
-      'lastSeen': '25 min ago',
-      'interests': ['Cooking', 'Gardening', 'Pets'],
-      'isOnline': false,
-      'location': const LatLng(37.7449, -122.4494),
-      'lastUpdated': DateTime.now().subtract(const Duration(minutes: 25)),
-    },
-  ];
+  final FirebaseService _firebase = FirebaseService();
 
   /// Initialize location service - starts background processing immediately
   Future<bool> initialize() async {
@@ -173,6 +111,8 @@ class LocationService {
         (Position position) {
           _currentPosition = position;
           debugPrint('📍 Location updated: ${position.latitude}, ${position.longitude}');
+          // Try to update user location in Firestore (non-blocking)
+          _firebase.updateUserLocation(position).catchError((_) {});
         },
         onError: (error) {
           debugPrint('❌ Location stream error: $error');
@@ -234,32 +174,10 @@ class LocationService {
         debugPrint('❌ No current location available for nearby users');
         return [];
       }
-
-      final currentLatLng = LatLng(currentLocation.latitude, currentLocation.longitude);
-      
-      // Filter users within the specified radius
-      final nearbyUsers = _mockNearbyUsers.where((user) {
-        final userLatLng = user['location'] as LatLng;
-        final distance = _calculateDistance(currentLatLng, userLatLng);
-        return distance <= radiusInKm;
-      }).toList();
-
-      // Sort by distance
-      nearbyUsers.sort((a, b) {
-        final distanceA = _calculateDistance(currentLatLng, a['location'] as LatLng);
-        final distanceB = _calculateDistance(currentLatLng, b['location'] as LatLng);
-        return distanceA.compareTo(distanceB);
-      });
-
-      // Update distances based on current location
-      for (var user in nearbyUsers) {
-        final userLatLng = user['location'] as LatLng;
-        final distance = _calculateDistance(currentLatLng, userLatLng);
-        user['distance'] = distance;
-      }
-
-      debugPrint('📍 Found ${nearbyUsers.length} nearby users');
-      return nearbyUsers;
+     final usersStream = _firebase.getNearbyUsers(currentLocation, radiusInKm);
+     final first = await usersStream.first;
+     debugPrint('📍 Found ${first.length} nearby users');
+     return first;
     } catch (e) {
       debugPrint('❌ Error getting nearby users: $e');
       return [];
@@ -334,40 +252,5 @@ class LocationService {
     return distance <= radiusInKm;
   }
 
-  /// Get mock user by ID
-  Map<String, dynamic>? getMockUserById(String userId) {
-    try {
-      return _mockNearbyUsers.firstWhere((user) => user['id'] == userId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Update mock user location
-  void updateMockUserLocation(String userId, LatLng newLocation) {
-    try {
-      final userIndex = _mockNearbyUsers.indexWhere((user) => user['id'] == userId);
-      if (userIndex != -1) {
-        _mockNearbyUsers[userIndex]['location'] = newLocation;
-        _mockNearbyUsers[userIndex]['lastUpdated'] = DateTime.now();
-      }
-    } catch (e) {
-      debugPrint('❌ Error updating mock user location: $e');
-    }
-  }
-
-  /// Get all mock users
-  List<Map<String, dynamic>> getAllMockUsers() {
-    return List.from(_mockNearbyUsers);
-  }
-
-  /// Add a new mock user
-  void addMockUser(Map<String, dynamic> user) {
-    _mockNearbyUsers.add(user);
-  }
-
-  /// Remove a mock user
-  void removeMockUser(String userId) {
-    _mockNearbyUsers.removeWhere((user) => user['id'] == userId);
-  }
+  // Mock-only helpers removed; dynamic data is used instead
 }

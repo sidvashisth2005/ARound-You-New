@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:around_you/services/firebase_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,98 +20,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   late Animation<Offset> _slideAnimation;
   
   int _selectedTabIndex = 0;
+  final FirebaseService _firebaseService = FirebaseService();
+  late Stream<QuerySnapshot> _chatsStream;
+  late Stream<QuerySnapshot> _communitiesStream;
   
-  // Mock chat data
-  final List<Map<String, dynamic>> _individualChats = [
-    {
-      'id': 'chat1',
-      'name': 'Sarah Chen',
-      'avatar': '👩‍💼',
-      'lastMessage': 'Hey! How was your day?',
-      'timestamp': '2 min ago',
-      'unreadCount': 2,
-      'isOnline': true,
-      'isTyping': false,
-    },
-    {
-      'id': 'chat2',
-      'name': 'Mike Rodriguez',
-      'avatar': '👨‍🎨',
-      'lastMessage': 'Did you see the new AR feature?',
-      'timestamp': '15 min ago',
-      'unreadCount': 0,
-      'isOnline': true,
-      'isTyping': true,
-    },
-    {
-      'id': 'chat3',
-      'name': 'Emma Thompson',
-      'avatar': '👩‍🎓',
-      'lastMessage': 'Thanks for the memory!',
-      'timestamp': '1 hour ago',
-      'unreadCount': 1,
-      'isOnline': false,
-      'isTyping': false,
-    },
-    {
-      'id': 'chat4',
-      'name': 'Alex Kim',
-      'avatar': '👨‍💻',
-      'lastMessage': 'Let\'s meet up soon!',
-      'timestamp': '2 hours ago',
-      'unreadCount': 0,
-      'isOnline': false,
-      'isTyping': false,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _communityChats = [
-    {
-      'id': 'community1',
-      'name': 'Photography Enthusiasts',
-      'avatar': '📸',
-      'lastMessage': 'Check out this amazing sunset!',
-      'timestamp': '5 min ago',
-      'unreadCount': 5,
-      'memberCount': 128,
-      'isActive': true,
-    },
-    {
-      'id': 'community2',
-      'name': 'Local Foodies',
-      'avatar': '🍕',
-      'lastMessage': 'New restaurant opening downtown!',
-      'timestamp': '30 min ago',
-      'unreadCount': 12,
-      'memberCount': 89,
-      'isActive': true,
-    },
-    {
-      'id': 'community3',
-      'name': 'Tech Innovators',
-      'avatar': '💻',
-      'lastMessage': 'AR development meetup this weekend',
-      'timestamp': '2 hours ago',
-      'unreadCount': 0,
-      'memberCount': 256,
-      'isActive': false,
-    },
-    {
-      'id': 'community4',
-      'name': 'Nature Explorers',
-      'avatar': '🌲',
-      'lastMessage': 'Hiking trip this Saturday!',
-      'timestamp': '1 day ago',
-      'unreadCount': 3,
-      'memberCount': 67,
-      'isActive': true,
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    _chatsStream = FirebaseFirestore.instance
+        .collection('chats')
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots();
+    _communitiesStream = FirebaseFirestore.instance
+        .collection('communities')
+        .orderBy('updatedAt', descending: true)
+        .snapshots();
   }
 
   void _initializeAnimations() {
@@ -287,23 +213,61 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildIndividualChatsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _individualChats.length,
-      itemBuilder: (context, index) {
-        final chat = _individualChats[index];
-        return _buildIndividualChatTile(chat);
+    return StreamBuilder<QuerySnapshot>(
+      stream: _chatsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final chat = {
+              'id': docs[index].id,
+              'name': data['title'] ?? 'Chat',
+              'avatar': '💬',
+              'lastMessage': data['lastMessage'] ?? '',
+              'timestamp': '',
+              'unreadCount': data['unreadCount'] ?? 0,
+              'isOnline': false,
+              'isTyping': false,
+            };
+            return _buildIndividualChatTile(chat);
+          },
+        );
       },
     );
   }
 
   Widget _buildCommunityChatsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _communityChats.length,
-      itemBuilder: (context, index) {
-        final chat = _communityChats[index];
-        return _buildCommunityChatTile(chat);
+    return StreamBuilder<QuerySnapshot>(
+      stream: _communitiesStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final chat = {
+              'id': docs[index].id,
+              'name': data['name'] ?? 'Community',
+              'avatar': '👥',
+              'lastMessage': data['lastMessage'] ?? '',
+              'timestamp': '',
+              'unreadCount': data['unreadCount'] ?? 0,
+              'memberCount': data['memberCount'] ?? 0,
+              'isActive': true,
+            };
+            return _buildCommunityChatTile(chat);
+          },
+        );
       },
     );
   }

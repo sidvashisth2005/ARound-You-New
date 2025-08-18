@@ -346,22 +346,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _handleContentTypeSelection(String contentType) {
     Navigator.pop(context);
-    
-    // Navigate to appropriate creation screen based on content type
-    switch (contentType) {
-      case 'text':
-        context.push('/create-memory?type=text');
-        break;
-      case 'photo':
-        context.push('/create-memory?type=photo');
-        break;
-      case 'video':
-        context.push('/create-memory?type=video');
-        break;
-      case 'audio':
-        context.push('/create-memory?type=audio');
-        break;
-    }
+    context.push('/create-memory', extra: {
+      'memoryType': contentType,
+    });
   }
 
   Widget _buildNavItem(

@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:around_you/services/auth_service.dart';
+import 'dart:io';
 
 // Import all your screen files here
 import 'package:around_you/screens/onboarding_screen.dart';
@@ -16,6 +17,7 @@ import 'package:around_you/screens/social_discovery_screen.dart';
 import 'package:around_you/screens/notifications_screen.dart';
 import 'package:around_you/screens/chat_screen.dart';
 import 'package:around_you/screens/help_screen.dart';
+import 'package:around_you/screens/chat_thread_screen.dart';
 
 
 // Router with authentication handling
@@ -56,11 +58,24 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/create-memory',
-      builder: (context, state) => const CreateMemoryScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CreateMemoryScreen(
+          memoryType: extra != null ? extra['memoryType'] as String? : null,
+        );
+      },
     ),
     GoRoute(
       path: '/ar-memory',
-      builder: (context, state) => const ARMemoryScreen(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return ARMemoryScreen(
+          memoryType: extra != null ? extra['memoryType'] as String? : null,
+          memoryText: extra != null ? extra['memoryText'] as String? : null,
+          mediaFile: extra != null ? extra['mediaFile'] as File? : null,
+          modelId: extra != null ? extra['modelId'] as String? : null,
+        );
+      },
     ),
     GoRoute(
       path: '/memory/:id',
@@ -90,7 +105,11 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/chat/:id',
-      builder: (context, state) => const ChatScreen(),
+      builder: (context, state) {
+        final chatId = state.pathParameters['id']!;
+        final extra = state.extra as Map<String, dynamic>?;
+        return ChatThreadScreen(chatId: chatId, chatName: extra != null ? extra['name'] as String? : null);
+      },
     ),
     GoRoute(
       path: '/help',

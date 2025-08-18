@@ -6,17 +6,20 @@ import 'package:around_you/services/auth_service.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:io';
+import 'package:around_you/widgets/wormhole_overlay.dart';
 
 class ARMemoryScreen extends StatefulWidget {
   final String? memoryType;
   final String? memoryText;
   final File? mediaFile;
+  final String? modelId;
 
   const ARMemoryScreen({
     super.key,
     this.memoryType,
     this.memoryText,
     this.mediaFile,
+    this.modelId,
   });
 
   @override
@@ -39,6 +42,7 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
   String? _currentLocation;
   List<ARMemory> _nearbyMemories = [];
   bool _isLoadingMemories = false;
+  bool _showWormhole = true;
 
   @override
   void initState() {
@@ -47,6 +51,10 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
     _loadLocationData();
     _loadNearbyMemories();
     _selectDefaultModel();
+    // Initialize camera for AR preview
+    _arService.initializeCamera().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _initializeAnimations() {
@@ -122,6 +130,11 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
 
   void _selectDefaultModel() {
     final memoryType = widget.memoryType ?? 'text';
+    if (widget.modelId != null) {
+      _selectedModelId = widget.modelId!;
+      setState(() {});
+      return;
+    }
     final model = _arService.getModelByMemoryType(memoryType);
     if (model != null) {
       setState(() {
@@ -140,6 +153,7 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
 
     setState(() {
       _isPlacingModel = true;
+      _showWormhole = true;
     });
 
     try {
@@ -173,13 +187,14 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
         userName: userInfo['name']!,
         mediaFile: widget.mediaFile,
         textContent: widget.memoryText,
+        modelId: _selectedModelId,
       );
 
       if (success) {
         setState(() {
           _isModelPlaced = true;
         });
-
+        await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Memory placed successfully in AR world!')),
@@ -205,6 +220,7 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
     } finally {
       setState(() {
         _isPlacingModel = false;
+        _showWormhole = false;
       });
     }
   }
@@ -390,117 +406,67 @@ class _ARMemoryScreenState extends State<ARMemoryScreen> with TickerProviderStat
       ),
       body: Stack(
         children: [
-          // AR Camera View (Mock)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.blue.withOpacity(0.3),
-                  Colors.purple.withOpacity(0.3),
-                  Colors.orange.withOpacity(0.3),
-                ],
-              ),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseAnimationValue,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _pulseAnimationValue.value,
-                        child: Icon(
-                          Icons.camera_alt,
-                          size: 100,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'AR Camera View',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
+          // AR Camera View
+          Positioned.fill(
+            child: _arService.isCameraReady
+                ? FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _arService.cameraController!.value.previewSize!.height,
+                      height: _arService.cameraController!.value.previewSize!.width,
+                      child: _arService.getCameraPreview(),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Point camera at a flat surface',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // Memory Info Card
-                  if (widget.memoryText != null || widget.mediaFile != null)
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 32),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          if (widget.mediaFile != null) ...[
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child: widget.memoryType == 'photo'
-                                    ? Image.file(
-                                        widget.mediaFile!,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Container(
-                                        color: Colors.grey.withOpacity(0.3),
-                                        child: Icon(
-                                          widget.memoryType == 'video' ? Icons.videocam : Icons.mic,
-                                          color: Colors.white.withOpacity(0.7),
-                                          size: 32,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (widget.memoryText != null)
-                            Text(
-                              widget.memoryText!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.blue.withOpacity(0.3),
+                          Colors.purple.withOpacity(0.3),
+                          Colors.orange.withOpacity(0.3),
                         ],
                       ),
                     ),
-                ],
-              ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _pulseAnimationValue,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _pulseAnimationValue.value,
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  size: 100,
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Initializing AR Camera...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+
+          // Wormhole overlay at center
+          Center(
+            child: WormholeOverlay(
+              isVisible: _showWormhole || !_arService.isCameraReady,
+              animationAssetPath: 'Animation while launching.json',
+              size: 240,
             ),
           ),
           

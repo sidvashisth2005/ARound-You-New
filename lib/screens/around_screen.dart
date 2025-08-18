@@ -4,6 +4,8 @@ import 'package:around_you/theme/theme.dart';
 import 'package:around_you/extensions/color_extensions.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:around_you/services/location_service.dart';
+import 'package:around_you/services/firebase_service.dart';
+import 'dart:async';
 
 class AroundScreen extends StatefulWidget {
   const AroundScreen({super.key});
@@ -26,8 +28,10 @@ class _AroundScreenState extends State<AroundScreen>
   
   int _selectedTabIndex = 0;
   final LocationService _locationService = LocationService();
+  final FirebaseService _firebaseService = FirebaseService();
   List<Map<String, dynamic>> _nearbyUsers = [];
   bool _isLoadingUsers = false;
+  StreamSubscription? _nearbyUsersSub;
   
   // Mock nearby users data (fallback)
   final List<Map<String, dynamic>> _fallbackUsers = [
@@ -120,7 +124,7 @@ class _AroundScreenState extends State<AroundScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadNearbyUsers();
+    _subscribeNearbyUsers();
     _radarController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -183,6 +187,7 @@ class _AroundScreenState extends State<AroundScreen>
     _radarController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
+    _nearbyUsersSub?.cancel();
     super.dispose();
   }
 
@@ -195,22 +200,27 @@ class _AroundScreenState extends State<AroundScreen>
     context.push('/profile?userId=$userId');
   }
 
-  Future<void> _loadNearbyUsers() async {
-    setState(() {
-      _isLoadingUsers = true;
-    });
-
+  Future<void> _subscribeNearbyUsers() async {
+    setState(() => _isLoadingUsers = true);
     try {
-      final users = await _locationService.getNearbyUsers();
-      setState(() {
-        _nearbyUsers = users.isNotEmpty ? users : _fallbackUsers;
-        _isLoadingUsers = false;
+      final pos = await _locationService.getCurrentLocation();
+      if (pos == null) {
+        setState(() => _isLoadingUsers = false);
+        return;
+      }
+      _nearbyUsersSub?.cancel();
+      _nearbyUsersSub = _firebaseService
+          .getNearbyUsers(pos, 5.0)
+          .listen((users) {
+        setState(() {
+          _nearbyUsers = users;
+          _isLoadingUsers = false;
+        });
+      }, onError: (_) {
+        setState(() => _isLoadingUsers = false);
       });
-    } catch (e) {
-      setState(() {
-        _nearbyUsers = _fallbackUsers;
-        _isLoadingUsers = false;
-      });
+    } catch (_) {
+      setState(() => _isLoadingUsers = false);
     }
   }
 
